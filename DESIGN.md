@@ -200,6 +200,7 @@ Ecosystems that don't use reverse-DNS aren't bound: a Rust crate is `cirrhy`, a 
 3. **Whether to encrypt the file.** KDBX is encrypted because it holds secrets; time-tracking data may not warrant it. Encryption would complicate inspection and repair. Probably no, but decide explicitly.
 4. **Timezone and DST handling** — not yet considered, and material for a time tracker. Storing UTC instants plus the originating timezone is the likely answer; entries spanning a DST transition are the test case.
 5. **Directory scope vs file scope** (§4.2) — confirm before the picker is built, since it constrains atomic writes.
+6. **Import from other trackers** (§10) — the shape of the seam, not whether to have one.
 
 ## 9. First thing to build — **done** (2026-08-13)
 
@@ -212,6 +213,24 @@ Built as `packages/cirrhy_merge`, 30 tests green. Beyond the three cases above, 
 `DocumentStore` (§4.1) is the only thing left unimplemented — the platform port. Everything above it is plain Dart and tested against an in-memory store.
 
 Still to do: an age limit on tombstones (currently only pruned when a record outlives them) and §8.4 timezone handling, which the model sidesteps today by storing UTC instants only.
+
+---
+
+## 10. Import from other trackers — **Open** (raised 2026-08-13)
+
+Cirrhy exists because Clockify/Toggl/Kimai were unsatisfying, so its users arrive with history in one of them. There has to be a way in.
+
+**Cirrhy should not carry per-vendor importers.** Each one is a CSV/JSON dialect that changes without notice, for a single-user app that will see each migration once. Instead, expose one solid, well-documented way to get records in, and let an agent — Claude or equivalent — do the vendor-specific mapping from whatever the source exports. That is the kind of one-off, schema-guessing work an agent is genuinely good at, and it keeps five vendor parsers out of a codebase whose merge engine is the thing that must stay trustworthy.
+
+What that costs us is documentation quality: the seam only works if the format and the entity model are specified well enough for something that has never seen the code to produce a valid document. That spec is the deliverable, more than any code.
+
+An **embedded MCP server** was the other idea, and is probably overkill: it means shipping a server inside an offline single-user app, and it sits awkwardly against §4's rule that Cirrhy contains no network code. A documented file format plus the existing read-merge-write path may already be the whole feature — import becomes "produce a valid Cirrhy document, then merge it", which is a code path we already have and already test.
+
+Open, and to settle before it is built:
+
+- **Whether the seam is the file format or an API.** If it is the format (§5), import is just `merge`, and §3's commutativity means a bad import can be re-run rather than undone. That is the cheap answer and the one to disprove before considering anything larger.
+- **Re-import must not duplicate.** Records are identified by UUID (§3.1), and a vendor export carries none. Importing the same export twice would mint fresh UUIDs and double every entry. Some stable mapping from the source's own ID to ours has to exist, or import has to be defined as a one-time operation and enforced as one.
+- **Where the mapping lives.** Client/project/task hierarchies differ between vendors; a Toggl project may be a Cirrhy client. That judgement is the agent's job, but the result has to land in something reviewable before it is merged into real data.
 
 ---
 

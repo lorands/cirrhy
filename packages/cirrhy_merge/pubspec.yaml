@@ -1,0 +1,19 @@
+name: cirrhy_merge
+description: >-
+  Cirrhy's storage and merge engine. Pure Dart, zero UI dependencies: the record
+  model, tombstones, per-record history, the merge function and the
+  read-merge-write loop. Testable without a running app.
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  crypto: ^3.0.6
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

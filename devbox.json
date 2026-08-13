@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "flutter@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'Cirrhy — flutter pub get from the repo root; the workspace covers app/ and packages/'"
+    ],
+    "scripts": {
+      "test": [
+        "cd packages/cirrhy_merge && dart test",
+        "cd app && flutter test"
+      ],
+      "check": [
+        "flutter analyze",
+        "dart format --output=none --set-exit-if-changed packages app/lib app/test"
+      ]
+    }
+  }
+}

@@ -1,0 +1,31 @@
+name: cirrhy
+description: "A single-file personal time tracker."
+publish_to: none
+
+# versionName / CFBundleShortVersionString + build number.
+version: 0.1.0+1
+
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The storage and merge engine. Pure Dart, no UI dependencies — see
+  # DESIGN.md §6. The app depends on it; it never depends on the app.
+  cirrhy_merge:
+    path: ../packages/cirrhy_merge
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  # The logo lives at the repo root in assets/logo/. Flutter only bundles
+  # assets from inside this package, so wiring it up means either copying it
+  # here or adding flutter_svg — deferred until there is a screen to put it on.

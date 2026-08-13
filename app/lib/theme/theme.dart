@@ -44,7 +44,28 @@ ThemeData cirrhyLightTheme() => _build(CirrhyColors.light, Brightness.light);
 ThemeData cirrhyDarkTheme() => _build(CirrhyColors.dark, Brightness.dark);
 
 ThemeData _build(CirrhyColors c, Brightness brightness) {
-  final base = ThemeData(brightness: brightness, useMaterial3: true);
+  // Handed to the constructor rather than to copyWith, and that is
+  // load-bearing. The constructor merges this over Typography's black/white
+  // theme, so a role the design system does not map still comes out with a
+  // colour. copyWith replaces the TextTheme wholesale, which leaves every
+  // unmapped role — titleSmall, bodySmall, the rest — with a null colour; the
+  // text then paints in the renderer's own default, which on the light theme
+  // is white on a white ground. Invisible, and invisible only at runtime.
+  final base = ThemeData(
+    brightness: brightness,
+    useMaterial3: true,
+    textTheme: TextTheme(
+      displayLarge: Type.timer.copyWith(color: c.textPrimary),
+      headlineLarge: Type.h1.copyWith(color: c.textPrimary),
+      headlineMedium: Type.h2.copyWith(color: c.textPrimary),
+      headlineSmall: Type.h3.copyWith(color: c.textPrimary),
+      bodyLarge: Type.bodyLarge.copyWith(color: c.textPrimary),
+      bodyMedium: Type.body.copyWith(color: c.textPrimary),
+      labelLarge: Type.label.copyWith(color: c.textPrimary),
+      labelMedium: Type.label.copyWith(color: c.textSecondary),
+      labelSmall: Type.caption.copyWith(color: c.textMuted),
+    ),
+  );
 
   return base.copyWith(
     extensions: [CirrhyTheme(colors: c)],
@@ -67,17 +88,6 @@ ThemeData _build(CirrhyColors c, Brightness brightness) {
       onSurfaceVariant: c.textSecondary,
       outline: c.borderControl,
       outlineVariant: c.border,
-    ),
-    textTheme: TextTheme(
-      displayLarge: Type.timer.copyWith(color: c.textPrimary),
-      headlineLarge: Type.h1.copyWith(color: c.textPrimary),
-      headlineMedium: Type.h2.copyWith(color: c.textPrimary),
-      headlineSmall: Type.h3.copyWith(color: c.textPrimary),
-      bodyLarge: Type.bodyLarge.copyWith(color: c.textPrimary),
-      bodyMedium: Type.body.copyWith(color: c.textPrimary),
-      labelLarge: Type.label.copyWith(color: c.textPrimary),
-      labelMedium: Type.label.copyWith(color: c.textSecondary),
-      labelSmall: Type.caption.copyWith(color: c.textMuted),
     ),
     dividerTheme: DividerThemeData(color: c.border, thickness: 1, space: 1),
     filledButtonTheme: FilledButtonThemeData(

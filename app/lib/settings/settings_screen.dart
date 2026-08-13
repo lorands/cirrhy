@@ -221,11 +221,11 @@ class _StorageSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.storageSectionLabel, style: text.titleSmall),
+        Text(l10n.storageSectionLabel, style: text.labelLarge),
         const SizedBox(height: Space.x1),
         Text(
           l10n.storageDescription,
-          style: text.bodySmall?.copyWith(color: colors.textSecondary),
+          style: text.labelSmall?.copyWith(color: colors.textSecondary),
         ),
         const SizedBox(height: Space.x4),
         Container(
@@ -307,7 +307,7 @@ class _NoteLine extends StatelessWidget {
         Icon(icon, size: 18, color: tone),
         const SizedBox(width: Space.x2),
         Expanded(
-          child: Text(message, style: text.bodySmall?.copyWith(color: tone)),
+          child: Text(message, style: text.labelSmall?.copyWith(color: tone)),
         ),
       ],
     );
@@ -326,7 +326,7 @@ class _LanguageSection extends StatelessWidget {
       children: [
         Text(
           AppLocalizations.of(context).languageLabel,
-          style: Theme.of(context).textTheme.titleSmall,
+          style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: Space.x3),
         LanguagePicker(preference: preference),

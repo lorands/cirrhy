@@ -14,7 +14,7 @@ Built against Flutter 3.44.8 / Dart 3.12.2. Run everything from the repo root:
 ```sh
 flutter pub get                        # resolves the whole workspace; also runs gen-l10n
 tool/check.sh                          # analyze + report formatting
-tool/test.sh                           # engine (33 tests) then app (68)
+tool/test.sh                           # engine (33 tests) then app (74)
 
 tool/dev.sh                            # desktop + mobile side by side, one hot reload
 tool/run-android.sh                    # start one frontend; run-{linux,macos,ios,windows} too

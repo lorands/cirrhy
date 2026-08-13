@@ -68,6 +68,16 @@ The exception, and the thing to design deliberately: **the running timer is a mu
 
 **Model the running timer as a per-device record keyed by a device ID.** Two devices then merge into two open intervals that the UI surfaces for reconciliation, instead of one silently winning.
 
+### 3.7 Device-scoped settings stay out of the file — **Decided** (2026-08-13)
+
+The generalisation of §3.6: **state that describes a device rather than the work belongs in platform preferences, not the document.** Putting it in the file subjects it to last-write-wins merge, where the loser is a setting the user deliberately chose on the other device.
+
+The UI language is the first of these, and the test case. A Hungarian phone and an English work laptop are both legitimate for one user; a synced language would flip one device because the other changed. It is stored via `shared_preferences` as a nullable locale, where null — the default — means "follow the operating system".
+
+This does not weaken the single-file promise, which is about *tracking data*: clients, projects, tasks, entries. Losing a device's preferences costs a re-pick; losing an entry costs recorded work. The two do not deserve the same machinery.
+
+The boundary to apply when something new arrives: if losing it would lose recorded work, it goes in the document. If it only describes how this device presents that work, it does not. Window size, theme override and the chosen file handle all fall on the preferences side.
+
 ---
 
 ## 4. File access — **Decided**

@@ -1,0 +1,23 @@
+{
+  "@@locale": "en",
+  "appTitle": "Cirrhy",
+  "@appTitle": {
+    "description": "The product name, shown in the OS task switcher and window title. A brand name — leave it untranslated in every locale."
+  },
+  "languageName": "English",
+  "@languageName": {
+    "description": "This language's name written in itself, for a language picker. Never translate it into another language: the Hungarian entry says Magyar, not Hungarian."
+  },
+  "placeholderBody": "No UI yet — the merge engine comes first.",
+  "@placeholderBody": {
+    "description": "Shown on the temporary start screen while the app has no real UI. DESIGN.md §9 builds the storage engine before any screen."
+  },
+  "languageSystem": "Use the system language",
+  "@languageSystem": {
+    "description": "The option in the language picker that hands the choice back to the OS. This is the default: Cirrhy only overrides the system language if the user asks it to."
+  },
+  "languageLabel": "Language",
+  "@languageLabel": {
+    "description": "Field label above the language picker. The picker's own value says which language is active, so this must not repeat it."
+  }
+}

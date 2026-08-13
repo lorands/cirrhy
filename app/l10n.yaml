@@ -1,0 +1,22 @@
+# Localisation codegen. `flutter gen-l10n` reads this; `generate: true` in
+# pubspec.yaml makes the normal build run it for you.
+#
+# Adding a language is one file: drop lib/l10n/app_<code>.arb next to the
+# others and rebuild. Nothing here enumerates the locales — the generator
+# discovers them from the directory, which is what keeps the set extensible.
+
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-dir: lib/l10n/generated
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# Getters return non-null. A missing key then fails the build instead of
+# handing a null to a widget at run time.
+nullable-getter: false
+
+# Every language must carry every key. Untranslated strings would otherwise
+# fall back to English silently, and a half-translated release is worse than a
+# loud build failure.
+required-resource-attributes: false
+untranslated-messages-file: l10n-untranslated.json

@@ -30,6 +30,12 @@ app/.flutter-plugins-dependencies
 app/pubspec.lock
 packages/*/pubspec.lock
 
+# Localisation codegen. `flutter pub get` regenerates it from the ARB files,
+# so a fresh clone has it before anything needs it. The ARB files are tracked;
+# these are not.
+app/lib/l10n/generated/
+app/l10n-untranslated.json
+
 # Generated platform scaffolding that flutter regenerates on demand
 app/android/.gradle/
 app/android/local.properties

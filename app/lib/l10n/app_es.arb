@@ -1,0 +1,8 @@
+{
+  "@@locale": "es",
+  "appTitle": "Cirrhy",
+  "languageName": "Español",
+  "placeholderBody": "Todavía no hay interfaz: primero se construye el motor de fusión.",
+  "languageSystem": "Usar el idioma del sistema",
+  "languageLabel": "Idioma"
+}

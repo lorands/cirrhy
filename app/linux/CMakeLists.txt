@@ -112,6 +112,17 @@ install(DIRECTORY "${NATIVE_ASSETS_DIR}"
    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
    COMPONENT Runtime)
 
+# App icon and desktop entry. The hicolor tree goes beside the executable so
+# my_application.cc can add it to GTK's icon search path and the window has an
+# icon without the app being installed. A distro package or AppImage should
+# additionally install icons/hicolor into ${prefix}/share/icons and the
+# .desktop file into ${prefix}/share/applications. Regenerate both with
+# tool/gen_app_icons.py, never by hand.
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/icons"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/${APPLICATION_ID}.desktop"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+
 # Fully re-copy the assets directory on each build to avoid having stale files
 # from a previous install.
 set(FLUTTER_ASSET_DIR_NAME "flutter_assets")

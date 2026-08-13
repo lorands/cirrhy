@@ -19,11 +19,35 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Point GTK at the hicolor tree the build installs next to the executable, so
+// a bundle that has not been installed system-wide still finds its icon.
+//
+// An installed package drops the same tree under /usr/share/icons and GTK
+// picks it up from there; appending is harmless in that case. Icons are looked
+// up by name, which is why gtk_window_set_icon_name below is given the
+// application ID rather than a file path.
+static void add_bundled_icon_search_path() {
+  g_autoptr(GError) error = nullptr;
+  g_autofree gchar* executable = g_file_read_link("/proc/self/exe", &error);
+  if (executable == nullptr) {
+    g_warning("Failed to locate the executable, app icon unavailable: %s",
+              error->message);
+    return;
+  }
+
+  g_autofree gchar* bundle = g_path_get_dirname(executable);
+  g_autofree gchar* icons = g_build_filename(bundle, "data", "icons", nullptr);
+  gtk_icon_theme_append_search_path(gtk_icon_theme_get_default(), icons);
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+
+  add_bundled_icon_search_path();
+  gtk_window_set_icon_name(window, APPLICATION_ID);
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
@@ -45,11 +69,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "cirrhy");
+    gtk_header_bar_set_title(header_bar, "Cirrhy");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "cirrhy");
+    gtk_window_set_title(window, "Cirrhy");
   }
 
   gtk_window_set_default_size(window, 1280, 720);

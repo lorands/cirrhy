@@ -8,9 +8,8 @@ Thumbs.db
 *.swp
 *~
 
-# nix / devbox
+# nix / direnv
 .direnv/
-.devbox/
 result
 result-*
 

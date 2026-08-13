@@ -14,7 +14,7 @@ Built against Flutter 3.44.8 / Dart 3.12.2. Run everything from the repo root:
 ```sh
 flutter pub get                        # resolves the whole workspace; also runs gen-l10n
 tool/check.sh                          # analyze + report formatting
-tool/test.sh                           # engine (30 tests) then app (22)
+tool/test.sh                           # engine (33 tests) then app (68)
 
 tool/dev.sh                            # desktop + mobile side by side, one hot reload
 tool/run-android.sh                    # start one frontend; run-{linux,macos,ios,windows} too
@@ -24,9 +24,9 @@ tool/target-linux.sh                   # one target; --debug default, --release 
 
 `flutter build` resolves `lib/main.dart` against the working directory, so it only works from `app/`, never the workspace root. The `tool/` scripts handle that themselves — see `tool/README.md`.
 
-There is **no UI yet**, deliberately — DESIGN.md §9 puts the engine first. `app/lib/main.dart` is a placeholder that wires the theme and nothing else. `app/lib/theme/` mirrors the Penpot token library; keep the two in step.
+The only screens that exist are **first run and preferences**, which are the same screen — DESIGN.md §9 still puts the engine before the product UI, and the placeholder behind them is still a placeholder. `app/lib/theme/` mirrors the Penpot token library; keep the two in step. Penpot has no screen mockups yet, only the token and component sheets, so anything beyond those two screens needs a design before it needs code.
 
-`DocumentStore` (DESIGN.md §4.1) is the unimplemented piece: the platform port for file access. Everything above it is plain Dart.
+`DocumentStore` (DESIGN.md §4.1) is implemented on all five platforms — see [Where the file lives](#where-the-file-lives).
 
 ## Languages
 
@@ -47,9 +47,29 @@ It is stored in **platform preferences, not the Cirrhy document**, and that is t
 
 A stored language the app no longer ships is ignored rather than honoured, so dropping a translation cannot strand someone in a language with no strings left.
 
-The picker currently sits on the placeholder screen. That is scaffolding so the choice can be exercised on a real device before a settings screen exists — move it when settings is designed; `LocalePreference` does not change.
+The picker lives on the preferences screen, where it moved off the placeholder once that screen existed. `LocalePreference` did not change in the move, and should not.
 
 Dates, times and durations are the reporting feature's core output and must go through `intl` formatters, never hand-built strings — `1.5 h`, `1,5 óra` and `1,5 Std.` all differ by more than the decimal mark.
+
+## Where the file lives
+
+The user picks a **folder** at first run and can change it later; both are the same screen (DESIGN.md §4.6). The app is gated until a folder is chosen — a default location was considered and dropped, so do not reintroduce one without reading why.
+
+The parts that will bite whoever touches this next:
+
+- **The choice is device-scoped**, stored in platform preferences exactly like the language, and must never move into the document. Here the argument does not even need merge semantics: an iOS bookmark is meaningless on Linux.
+- **Directory scope, not file scope**, decided 2026-08-13. A document-scoped handle cannot write a sibling temp file, so every save would degrade to in-place overwrite. Asking for a folder is what makes the atomic write possible.
+- **The file name is fixed** (`cirrhy.json`, `documentFileName`) and never asked. It is what the adopt rule keys on: a chosen folder that already holds a Cirrhy document is opened and **merged**, not replaced, which is what makes setting up the second device the same flow as the first. `knownDocumentFileNames` is the one place that learns a second name if §5 lands on CBOR.
+- **Relocating is a save, not a settings write.** Point the store at the new handle and read-merge-write does the rest, including the case where the target already holds a document. The old file is left where it is.
+
+Two platform-shaped facts that look like mistakes and are not:
+
+- **macOS is an Apple platform here, not a desktop one.** Flutter's macOS template enables App Sandbox, so a picked path works until the first restart and then stops. macOS uses a security-scoped bookmark like iOS, and the two entitlements files carry the grants that make that work.
+- **Android writes in place.** SAF has no replace-over-existing, so the pre-write backup is not belt-and-braces there, it is the whole recovery story.
+
+Linux and Windows need no native code — a path is a durable handle, and `file_selector` supplies the dialog. The other three go through one channel, `com.lorands.cirrhy/documents`, implemented in `android/.../DocumentFolders.kt`, `ios/Runner/AppDelegate.swift` and `macos/Runner/MainFlutterWindow.swift`. **The two Swift files are near-duplicates on purpose**: sharing one file across the two Xcode targets means hand-editing both project files, which is a worse trade than keeping two short files in step. Backups are plain `dart:io` on all five, because app-private storage is a real path everywhere.
+
+**Only Linux is verified.** Android compiles but its SAF logic has never run; the Swift has never been built. Say so rather than implying otherwise.
 
 ## App icons
 

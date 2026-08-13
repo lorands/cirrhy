@@ -43,6 +43,23 @@ abstract interface class DocumentStore {
   Future<void> write(List<int> bytes);
 }
 
+/// Somewhere to put a copy of the file as it was, immediately before it is
+/// overwritten.
+///
+/// DESIGN.md §4.2 and §4.3. The write is atomic only where the platform allows
+/// it, and on Android it never is — SAF has no replace-over-existing, so an
+/// interrupted save can leave a truncated file where the user's history was.
+/// This is the recovery story for that, and on Android it is the only one.
+///
+/// The implementation belongs to the app rather than the engine, because it
+/// writes to app-private storage. It takes the bytes that were read rather
+/// than reading again: [DocumentRepository.save] has them in hand already, and
+/// a second read is exactly the cost worth avoiding on the platform that
+/// needs this most.
+abstract interface class DocumentBackup {
+  Future<void> snapshot(List<int> bytes);
+}
+
 /// Raised when the file on disk cannot be parsed during a save.
 ///
 /// Saving deliberately fails closed here. Treating an unparseable file as empty
@@ -66,13 +83,16 @@ final class DocumentRepository {
   DocumentRepository({
     required DocumentStore store,
     DocumentCodec codec = const JsonDocumentCodec(),
+    DocumentBackup? backup,
     int historyLimit = defaultHistoryLimit,
   }) : _store = store,
        _codec = codec,
+       _backup = backup,
        _historyLimit = historyLimit;
 
   final DocumentStore _store;
   final DocumentCodec _codec;
+  final DocumentBackup? _backup;
   final int _historyLimit;
 
   /// Hash of the bytes this process last read or wrote.
@@ -92,6 +112,7 @@ final class DocumentRepository {
   /// contain records this device has never seen.
   Future<CirrhyDocument> save(CirrhyDocument document) async {
     final stored = await _store.read();
+    await _snapshot(stored.bytes);
 
     // The common case: nothing else touched the file, so there is nothing to
     // merge. Still a full re-read, because nothing notifies us of changes
@@ -123,6 +144,22 @@ final class DocumentRepository {
     final onDisk = _codec.decode(stored.bytes);
     _knownHash = stored.hash;
     return mergeDocuments(onDisk, document, historyLimit: _historyLimit);
+  }
+
+  /// Never lets a failed backup fail the save.
+  ///
+  /// The trade is asymmetric: refusing to write because the snapshot could not
+  /// be taken discards the interval the user just tracked — a certain loss —
+  /// to protect against a torn write, which is a possible one. There is
+  /// nothing to back up before the first write, hence the empty check.
+  Future<void> _snapshot(List<int> bytes) async {
+    final backup = _backup;
+    if (backup == null || bytes.isEmpty) return;
+    try {
+      await backup.snapshot(bytes);
+    } on Object {
+      // Deliberately swallowed; see above.
+    }
   }
 
   Future<CirrhyDocument> _write(CirrhyDocument document) async {

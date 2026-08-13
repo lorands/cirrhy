@@ -41,4 +41,9 @@ export 'src/records.dart'
         Tombstone,
         uuidV4;
 export 'src/store.dart'
-    show DocumentRepository, DocumentStore, SaveBlockedException, StoredBytes;
+    show
+        DocumentBackup,
+        DocumentRepository,
+        DocumentStore,
+        SaveBlockedException,
+        StoredBytes;

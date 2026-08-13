@@ -203,4 +203,73 @@ void main() {
       expect(store.reads, before + 1);
     });
   });
+
+  group('pre-write backup', () {
+    test('snapshots what was on disk before overwriting it', () async {
+      final store = MemoryStore();
+      final backup = RecordingBackup();
+      final repo = DocumentRepository(store: store, backup: backup);
+      await repo.save(
+        const CirrhyDocument.empty().put(entry('first', mod: 1, start: 1)),
+      );
+
+      await repo.save(
+        const CirrhyDocument.empty().put(entry('second', mod: 2, start: 2)),
+      );
+
+      // The *previous* state, not the one being written. The point is to hold
+      // the last bytes known to be readable, which is what a torn write or a
+      // bad merge destroys.
+      expect(backup.snapshots, hasLength(1));
+      final restored = const JsonDocumentCodec().decode(
+        backup.snapshots.single,
+      );
+      expect(restored.entries.keys, ['first']);
+    });
+
+    test('has nothing to snapshot on the first ever write', () async {
+      final backup = RecordingBackup();
+      await DocumentRepository(
+        store: MemoryStore(),
+        backup: backup,
+      ).save(const CirrhyDocument.empty());
+
+      expect(backup.snapshots, isEmpty);
+    });
+
+    test('a failed backup does not fail the save', () async {
+      // Refusing to write because the snapshot failed discards the interval
+      // the user just tracked — a certain loss — to guard against a torn
+      // write, which is a possible one.
+      final store = MemoryStore();
+      final repo = DocumentRepository(store: store, backup: BrokenBackup());
+      await repo.save(
+        const CirrhyDocument.empty().put(entry('first', mod: 1, start: 1)),
+      );
+
+      await repo.save(
+        const CirrhyDocument.empty().put(entry('second', mod: 2, start: 2)),
+      );
+
+      expect(store.writes, 2);
+      expect(const JsonDocumentCodec().decode(store.bytes).entries.keys, [
+        'second',
+      ]);
+    });
+  });
+}
+
+/// Captures the bytes handed to it, in order.
+final class RecordingBackup implements DocumentBackup {
+  final List<List<int>> snapshots = [];
+
+  @override
+  Future<void> snapshot(List<int> bytes) async => snapshots.add(bytes);
+}
+
+/// App-private storage that is full, unwritable, or otherwise having a bad day.
+final class BrokenBackup implements DocumentBackup {
+  @override
+  Future<void> snapshot(List<int> bytes) async =>
+      throw StateError('no space left on device');
 }

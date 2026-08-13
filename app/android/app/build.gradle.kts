@@ -34,6 +34,13 @@ android {
     }
 }
 
+dependencies {
+    // DocumentFile wraps the Storage Access Framework's tree URIs, which is
+    // how DESIGN.md §4.2's "ask for a folder" is expressed on Android.
+    // Apache-2.0, so it raises no licensing question for this project.
+    implementation("androidx.documentfile:documentfile:1.0.1")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

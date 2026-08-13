@@ -4,5 +4,18 @@
   "languageName": "Español",
   "placeholderBody": "Todavía no hay interfaz: primero se construye el motor de fusión.",
   "languageSystem": "Usar el idioma del sistema",
-  "languageLabel": "Idioma"
+  "languageLabel": "Idioma",
+  "settingsTitle": "Preferencias",
+  "firstRunTitle": "Te damos la bienvenida a Cirrhy",
+  "firstRunBody": "Elige dónde guardar tus datos. Todo se guarda en un único archivo, así que puedes ponerlo en una carpeta que ya sincronice tu servicio habitual, y elegir esa misma carpeta en tus otros dispositivos.",
+  "firstRunContinue": "Continuar",
+  "storageSectionLabel": "Carpeta de datos",
+  "storageDescription": "Cirrhy guarda todo en un único archivo. Elegir una carpeta que sincronice tu servicio habitual es lo que te permite usar Cirrhy en más de un dispositivo.",
+  "storageNotChosen": "Todavía no has elegido una carpeta",
+  "storageChoose": "Elegir carpeta…",
+  "storageChange": "Cambiar carpeta…",
+  "storageUnavailable": "Cirrhy ya no puede acceder a esta carpeta. Vuelve a elegirla.",
+  "storageWillAdopt": "Esta carpeta ya contiene un archivo de Cirrhy. Tus datos se fusionarán con él.",
+  "storageWillCreate": "Cirrhy creará su archivo en esta carpeta.",
+  "storagePickFailed": "No se ha podido abrir esa carpeta."
 }

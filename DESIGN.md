@@ -100,11 +100,14 @@ The entire platform surface is one narrow interface, and the core depends only o
 
 | Platform | Implementation |
 | --- | --- |
-| Linux / macOS / Windows | plain filesystem path |
+| Linux / Windows | plain filesystem path |
+| macOS | `NSOpenPanel` → **security-scoped bookmark** (`.withSecurityScope`) as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` |
 | iOS | `UIDocumentPicker` → **security-scoped bookmark** as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` for reads and writes |
 | Android | SAF `ACTION_OPEN_DOCUMENT_TREE` → `takePersistableUriPermission` → `ContentResolver` streams |
 
-### 4.2 Ask for a folder, not a file — **Proposed**
+**macOS is an Apple platform here, not a desktop one.** Flutter's macOS template ships with App Sandbox enabled, and a sandboxed app's access to a picked folder dies with the process — the path still reads fine while the app runs, which is exactly what makes this worth stating: it looks correct until the first restart. Only a security-scoped bookmark makes the handle durable, so macOS follows iOS. Disabling the sandbox would make the path work and would also forfeit the Mac App Store; not worth it to save one file of Swift shared with iOS anyway.
+
+### 4.2 Ask for a folder, not a file — **Decided** (2026-08-13)
 
 Request **directory scope** at pick time rather than a single document.
 
@@ -120,6 +123,8 @@ Temp file, then rename over the original — KeePass's "file transactions", whic
 
 Be aware this is genuinely contentious in our exact deployment: replacing the file breaks its identity for sync clients, cloud clients holding a lock make delete-then-rename fail, and users hit real I/O errors on Google Drive/GVfs and corrupted databases on iOS Files-backed storage. Both KeePass and KeePassXC ship an option to disable it. Treat atomic-rename as the desktop default **with an escape hatch**.
 
+**Android cannot do this at all.** SAF has no replace-over-existing: `DocumentsContract.renameDocument` fails when the target name is taken, so the only sequences available are delete-then-rename or a plain in-place overwrite, and the first is strictly worse — it widens the window to include the moment when neither file exists. Android therefore writes in place, and the **app-private pre-write backup is not optional there**, it is the entire recovery story. §4.2's fallback rule, promoted to the rule.
+
 ### 4.4 Accepted failure modes
 
 These follow from choosing the OS route. They are mitigated by the merge engine, not avoided.
@@ -132,6 +137,24 @@ These follow from choosing the OS route. They are mitigated by the merge engine,
 ### 4.5 Offline
 
 The local copy is the working copy. The app must be fully functional with no sync having happened; Keepass2Android caches in the platform's no-backup directory for exactly this. Offline correctness must never depend on the sync client having run.
+
+### 4.6 Choosing the location — **Proposed** (2026-08-13)
+
+The user says where the document lives. That question is asked at first run and **must stay answerable afterwards** — this is a setting with a screen, not a one-time wizard step.
+
+**It asks for a folder, and it cannot be a path field.** Directory scope is §4.2. On mobile there is no path to type or show: SAF and `UIDocumentPicker` hand back an opaque handle, and its URI is not something to put in front of a user. The control is therefore *a button that opens the OS picker, plus the folder's display name* — on every platform, including desktop, where a path field would otherwise be tempting and would then be the one platform behaving differently.
+
+**Pick a folder; adopt what is already in it.** If the chosen folder already holds a Cirrhy document, open and merge it rather than asking "new or existing?". Setting up the second device is then the same three taps as the first — and it is the common case, since the entire point of the choice is a folder some sync client is already watching. The filename is fixed and shown rather than asked: one user, one document (§1), and a user-chosen name would break the adoption rule for nothing.
+
+**Changing it later is a move, not a preference write.** One flow serves three situations, and they should be built as one: first run, a deliberate move, and the forced re-pick after a handle goes stale or is revoked (§4.4). Relocating means pointing the store at the new handle and saving — read-merge-write (§3.2) already handles the case where the target holds a document, which is the case that would otherwise silently overwrite another device's history. The old file is left where it is: deleting a file inside someone's synced folder is not ours to do, and because the merge is a union, re-picking it later costs nothing.
+
+**It is the same kind of setting as the language, and it needs the same home.** Both are device-scoped platform preferences (§3.7), both are picked once and rarely revisited, and neither belongs in the document. That makes a **preferences screen** the next screen to build: it holds the language picker — currently parked on the placeholder screen as scaffolding — and the location. First run should be that same screen in a first-run presentation rather than a separate wizard, so there is one place where either setting can be changed, one set of strings to translate, and no second implementation of the picker that drifts from the first.
+
+**The handle is device-scoped and lives in platform preferences, never in the document** — §3.6 and §3.7, and here the argument is not even about merge semantics: an iOS security-scoped bookmark is meaningless on Linux. Two devices keeping the file in different places is normal, not a conflict. Stored beside the handle is a human-readable label, because neither a bookmark blob nor a SAF URI can be shown.
+
+**First run asks, and the app waits for the answer.** Offering a working default instead — app-private, labelled as not synced, relocate later — was considered and dropped. It reads as the friendlier option and is worse in two concrete ways. The app-private container path is not stable across an iOS reinstall or restore, so the location chosen to be the safe temporary one is the only one that can silently move out from under the handle. And a default that is not synced quietly opts the user out of the single promise the product makes, in the one moment they were paying attention to the question. The picker is three taps; the gate is honest.
+
+**Backups are not a second path question.** Take an automatic pre-write copy into app-private storage — §4.2's fallback rule, worth applying always rather than only when directory scope is unavailable — invisible and unasked. A "keep backups beside the file" toggle can live in settings, off by default. It does not belong on the first-run screen: asking twice before the app has been used once, for something nobody looks at until after something has gone wrong, buys a worse first launch and no safety.
 
 ---
 
@@ -199,7 +222,7 @@ Ecosystems that don't use reverse-DNS aren't bound: a Rust crate is `cirrhy`, a 
 2. **JSON vs CBOR** (§5). JSON is implemented behind a `DocumentCodec` interface, so switching does not reach into the merge engine. Decide before the format ships to a real user, since it changes the on-disk file.
 3. **Whether to encrypt the file.** KDBX is encrypted because it holds secrets; time-tracking data may not warrant it. Encryption would complicate inspection and repair. Probably no, but decide explicitly.
 4. **Timezone and DST handling** — not yet considered, and material for a time tracker. Storing UTC instants plus the originating timezone is the likely answer; entries spanning a DST transition are the test case.
-5. **Directory scope vs file scope** (§4.2) — confirm before the picker is built, since it constrains atomic writes.
+5. ~~**Directory scope vs file scope** (§4.2).~~ **Resolved 2026-08-13: directory scope**, forced by the location picker (§4.6), which is the thing that asks the OS for one or the other. Atomic writes and beside-the-file backups both need a sibling temp.
 6. **Import from other trackers** (§10) — the shape of the seam, not whether to have one.
 
 ## 9. First thing to build — **done** (2026-08-13)
@@ -210,9 +233,11 @@ The highest-value tests are the adversarial merge cases: concurrent edits to one
 
 Built as `packages/cirrhy_merge`, 30 tests green. Beyond the three cases above, the merge is asserted **commutative and idempotent** — `merge(a, b) == merge(b, a)`, including on exact timestamp ties, and re-merging changes nothing. Those two properties are what make it safe to run on every save without knowing which side is "ours"; without them the result would depend on argument order.
 
-`DocumentStore` (§4.1) is the only thing left unimplemented — the platform port. Everything above it is plain Dart and tested against an in-memory store.
+`DocumentStore` (§4.1) is implemented on all five platforms as of 2026-08-13, together with the location picker of §4.6: a plain path on Linux and Windows, SAF with a persisted tree permission on Android, and a security-scoped bookmark on macOS and iOS. The pre-write backup is plain `dart:io` everywhere, since app-private storage is a real filesystem path even where the user's folder is not.
 
-Still to do: an age limit on tombstones (currently only pruned when a record outlives them) and §8.4 timezone handling, which the model sidesteps today by storing UTC instants only.
+**Verified on Linux only.** The engine and the Dart half of the port are covered headless, including relocating into a folder that already holds another device's document — the case §4.6 rests on. Android compiles and its logic is unexercised; macOS and iOS have not been built, which needs the MacBook. Treat the two Swift files as unproven until then.
+
+Still to do: an age limit on tombstones (currently only pruned when a record outlives them) and §8.4 timezone handling, which the model sidesteps today by storing UTC instants only. Also open on the Apple side: a bookmark that resolves as stale is used as-is, because handing a refreshed handle back to Dart needs a channel shape the port does not have yet.
 
 ---
 

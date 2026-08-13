@@ -14,12 +14,43 @@
 
 import 'package:cirrhy/l10n/generated/app_localizations.dart';
 import 'package:cirrhy/main.dart';
+import 'package:cirrhy/settings/document_location_preference.dart';
 import 'package:cirrhy/settings/locale_preference.dart';
+import 'package:cirrhy/storage/document_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/fake_document_directory.dart';
+
 const supported = AppLocalizations.supportedLocales;
+
+/// Opens the app and navigates to preferences, where the language picker
+/// lives.
+///
+/// It moved there off the placeholder screen when the preferences screen was
+/// built (DESIGN.md §4.6); the [LocalePreference] behind it did not change.
+/// The folder is pre-chosen so the app does not open on first run.
+Future<void> pumpAppAtPreferences(
+  WidgetTester tester,
+  LocalePreference locale,
+) async {
+  final location = await DocumentLocationPreference.load();
+  await location.set(
+    const DocumentLocation(handle: '/tmp/cirrhy', label: '/tmp/cirrhy'),
+  );
+
+  await tester.pumpWidget(
+    CirrhyApp(
+      localePreference: locale,
+      locationPreference: location,
+      directory: FakeDocumentDirectory(),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.settings_outlined));
+  await tester.pumpAndSettle();
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -139,8 +170,7 @@ void main() {
       tester,
     ) async {
       final pref = await LocalePreference.load(supported);
-      await tester.pumpWidget(CirrhyApp(localePreference: pref));
-      await tester.pumpAndSettle();
+      await pumpAppAtPreferences(tester, pref);
 
       await tester.tap(find.byType(DropdownMenu<Locale?>));
       await tester.pumpAndSettle();
@@ -165,8 +195,7 @@ void main() {
       tester.binding.platformDispatcher.localesTestValue = [const Locale('en')];
 
       final pref = await LocalePreference.load(supported);
-      await tester.pumpWidget(CirrhyApp(localePreference: pref));
-      await tester.pumpAndSettle();
+      await pumpAppAtPreferences(tester, pref);
 
       await tester.tap(find.byType(DropdownMenu<Locale?>));
       await tester.pumpAndSettle();
@@ -174,10 +203,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(pref.locale, const Locale('hu'));
-      expect(
-        find.text('Még nincs felület — előbb az összefésülő motor készül el.'),
-        findsOneWidget,
-      );
+      // The preferences screen itself is now in Hungarian, which is the same
+      // property the placeholder used to demonstrate: the switch redraws the
+      // whole app, not just the screen that owns the picker.
+      expect(find.text('Beállítások'), findsOneWidget);
     });
   });
 }

@@ -4,5 +4,18 @@
   "languageName": "Deutsch",
   "placeholderBody": "Noch keine Oberfläche — zuerst entsteht die Merge-Engine.",
   "languageSystem": "Systemsprache verwenden",
-  "languageLabel": "Sprache"
+  "languageLabel": "Sprache",
+  "settingsTitle": "Einstellungen",
+  "firstRunTitle": "Willkommen bei Cirrhy",
+  "firstRunBody": "Wähle, wo deine Daten liegen sollen. Alles steckt in einer einzigen Datei — du kannst sie also in einen Ordner legen, den dein Sync-Dienst ohnehin überwacht, und auf deinen anderen Geräten denselben Ordner wählen.",
+  "firstRunContinue": "Weiter",
+  "storageSectionLabel": "Datenordner",
+  "storageDescription": "Cirrhy speichert alles in einer einzigen Datei. Erst ein Ordner, den dein Sync-Dienst überwacht, macht Cirrhy auf mehreren Geräten nutzbar.",
+  "storageNotChosen": "Noch kein Ordner gewählt",
+  "storageChoose": "Ordner wählen…",
+  "storageChange": "Ordner ändern…",
+  "storageUnavailable": "Cirrhy erreicht diesen Ordner nicht mehr. Bitte wähle ihn erneut.",
+  "storageWillAdopt": "In diesem Ordner liegt bereits eine Cirrhy-Datei. Deine Daten werden mit ihr zusammengeführt.",
+  "storageWillCreate": "Cirrhy legt seine Datei in diesem Ordner an.",
+  "storagePickFailed": "Der Ordner konnte nicht geöffnet werden."
 }

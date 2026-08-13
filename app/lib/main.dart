@@ -15,7 +15,10 @@
 import 'package:flutter/material.dart';
 
 import 'l10n/generated/app_localizations.dart';
+import 'settings/document_location_preference.dart';
 import 'settings/locale_preference.dart';
+import 'settings/settings_screen.dart';
+import 'storage/document_directory.dart';
 import 'theme/theme.dart';
 import 'theme/tokens.dart';
 
@@ -24,15 +27,37 @@ Future<void> main() async {
   // Read before the first frame so the app never flashes the system language
   // and then swaps to the chosen one.
   final locale = await LocalePreference.load(AppLocalizations.supportedLocales);
-  runApp(CirrhyApp(localePreference: locale));
+  // Read, but deliberately not verified here. Checking that the handle still
+  // resolves means a platform round trip — on iOS, resolving a bookmark and
+  // starting a security-scoped access — and that does not belong in front of
+  // the first frame. The preferences screen checks when it opens (§4.4).
+  final location = await DocumentLocationPreference.load();
+  runApp(
+    CirrhyApp(
+      localePreference: locale,
+      locationPreference: location,
+      directory: DocumentDirectory.forPlatform(),
+    ),
+  );
 }
 
 class CirrhyApp extends StatelessWidget {
-  const CirrhyApp({super.key, this.localePreference});
+  const CirrhyApp({
+    super.key,
+    this.localePreference,
+    this.locationPreference,
+    this.directory,
+  });
 
   /// Null in tests and until the stored choice has been read; the app then
   /// simply follows the system, which is the default anyway.
   final LocalePreference? localePreference;
+
+  /// Null in tests that do not exercise storage. When it is present and holds
+  /// no folder, the app opens on the first-run screen (§4.6).
+  final DocumentLocationPreference? locationPreference;
+
+  final DocumentDirectory? directory;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +88,11 @@ class CirrhyApp extends StatelessWidget {
       // preference, so resolveLocale still guards the fallback.
       locale: preference?.locale,
       localeListResolutionCallback: resolveLocale,
-      home: _Placeholder(localePreference: preference),
+      home: _Home(
+        localePreference: preference,
+        locationPreference: locationPreference,
+        directory: directory,
+      ),
     );
   }
 }
@@ -89,23 +118,100 @@ Locale resolveLocale(List<Locale>? preferred, Iterable<Locale> supported) {
   return const Locale('en');
 }
 
+/// First run, or the app proper.
+class _Home extends StatefulWidget {
+  const _Home({this.localePreference, this.locationPreference, this.directory});
+
+  final LocalePreference? localePreference;
+  final DocumentLocationPreference? locationPreference;
+  final DocumentDirectory? directory;
+
+  @override
+  State<_Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<_Home> {
+  /// Decided once, at startup, and not re-derived from the preference.
+  ///
+  /// If this tracked `isChosen` the screen would swap itself out the instant
+  /// the folder was picked, taking the "will be created" / "will be merged"
+  /// confirmation with it before anyone read it.
+  late bool _firstRun = widget.locationPreference?.isChosen == false;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = widget.localePreference;
+    final location = widget.locationPreference;
+    final directory = widget.directory;
+
+    if (_firstRun && locale != null && location != null && directory != null) {
+      return ListenableBuilder(
+        listenable: location,
+        builder: (context, _) => SettingsScreen(
+          localePreference: locale,
+          locationPreference: location,
+          directory: directory,
+          firstRun: true,
+          onContinue: () => setState(() => _firstRun = false),
+        ),
+      );
+    }
+
+    return _Placeholder(
+      localePreference: locale,
+      locationPreference: location,
+      directory: directory,
+    );
+  }
+}
+
 /// Deliberately empty.
 ///
 /// DESIGN.md §9: the storage engine is built first, standalone and headless,
 /// because it is the part that can lose user data. Screens come after it, on
-/// top of the design system in the Penpot file.
+/// top of the design system in the Penpot file. What is here now is the way in
+/// to preferences and nothing else.
 class _Placeholder extends StatelessWidget {
-  const _Placeholder({this.localePreference});
+  const _Placeholder({
+    this.localePreference,
+    this.locationPreference,
+    this.directory,
+  });
 
   final LocalePreference? localePreference;
+  final DocumentLocationPreference? locationPreference;
+  final DocumentDirectory? directory;
 
   @override
   Widget build(BuildContext context) {
     final colors = CirrhyTheme.of(context);
     final text = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context);
+    final locale = localePreference;
+    final location = locationPreference;
+    final directory = this.directory;
+    final canOpenSettings =
+        locale != null && location != null && directory != null;
 
     return Scaffold(
+      appBar: AppBar(
+        actions: [
+          if (canOpenSettings)
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: l10n.settingsTitle,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SettingsScreen(
+                    localePreference: locale,
+                    locationPreference: location,
+                    directory: directory,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(Space.x8),
@@ -133,55 +239,21 @@ class _Placeholder extends StatelessWidget {
                   style: text.labelSmall?.copyWith(color: colors.brand),
                 ),
               ),
-              if (localePreference != null) ...[
-                const SizedBox(height: Space.x8),
-                LanguagePicker(preference: localePreference!),
+              if (location != null) ...[
+                const SizedBox(height: Space.x6),
+                ListenableBuilder(
+                  listenable: location,
+                  builder: (context, _) => Text(
+                    location.location?.label ?? l10n.storageNotChosen,
+                    style: text.labelSmall?.copyWith(color: colors.textMuted),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Scaffolding, not the finished settings UI.
-///
-/// The language override needs somewhere to be exercised before a settings
-/// screen exists, and having it on screen is how the choice gets checked on a
-/// real phone and a real desktop. It moves into settings when that screen is
-/// designed; the [LocalePreference] behind it does not change.
-class LanguagePicker extends StatelessWidget {
-  const LanguagePicker({super.key, required this.preference});
-
-  final LocalePreference preference;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final colors = CirrhyTheme.of(context);
-
-    return DropdownMenu<Locale?>(
-      initialSelection: preference.locale,
-      // Not languageSystem: that is one of the values, and a label repeating
-      // the selected value tells the reader nothing.
-      label: Text(l10n.languageLabel),
-      onSelected: preference.set,
-      textStyle: Theme.of(context).textTheme.bodyMedium,
-      dropdownMenuEntries: [
-        DropdownMenuEntry(value: null, label: l10n.languageSystem),
-        // Each language is listed in itself — a picker that says "Hungarian"
-        // is no use to someone who cannot read the current language. That is
-        // what the languageName key exists for.
-        for (final locale in AppLocalizations.supportedLocales)
-          DropdownMenuEntry(
-            value: locale,
-            label: lookupAppLocalizations(locale).languageName,
-            leadingIcon: preference.locale?.languageCode == locale.languageCode
-                ? Icon(Icons.check, size: 18, color: colors.brand)
-                : const SizedBox(width: 18),
-          ),
-      ],
     );
   }
 }

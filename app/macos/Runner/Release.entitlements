@@ -4,5 +4,14 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- The user picks a folder and Cirrhy reads and writes inside it. Both
+	     of these are required by DESIGN.md §4: without user-selected access
+	     the picker returns a URL that cannot be opened, and without app-scope
+	     bookmarks that access dies with the process, which is precisely the
+	     bug that makes macOS an Apple platform here rather than a desktop. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
 </dict>
 </plist>

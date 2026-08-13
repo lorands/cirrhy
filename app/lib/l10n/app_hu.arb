@@ -4,5 +4,18 @@
   "languageName": "Magyar",
   "placeholderBody": "Még nincs felület — előbb az összefésülő motor készül el.",
   "languageSystem": "Rendszernyelv használata",
-  "languageLabel": "Nyelv"
+  "languageLabel": "Nyelv",
+  "settingsTitle": "Beállítások",
+  "firstRunTitle": "Üdvözöl a Cirrhy",
+  "firstRunBody": "Válaszd ki, hol tároljuk az adataidat. Minden egyetlen fájlba kerül, így beteheted abba a mappába, amit a szinkronizáló szolgáltatásod amúgy is figyel — a többi eszközödön pedig ugyanazt a mappát választhatod.",
+  "firstRunContinue": "Tovább",
+  "storageSectionLabel": "Adatmappa",
+  "storageDescription": "A Cirrhy mindent egyetlen fájlban tárol. Ha olyan mappát választasz, amit a szinkronizáló szolgáltatásod figyel, több eszközön is használhatod.",
+  "storageNotChosen": "Még nincs mappa kiválasztva",
+  "storageChoose": "Mappa kiválasztása…",
+  "storageChange": "Mappa módosítása…",
+  "storageUnavailable": "A Cirrhy már nem éri el ezt a mappát. Válaszd ki újra.",
+  "storageWillAdopt": "Ebben a mappában már van Cirrhy-fájl. Az adataid össze lesznek fésülve vele.",
+  "storageWillCreate": "A Cirrhy ebben a mappában hozza létre a fájlját.",
+  "storagePickFailed": "A mappát nem sikerült megnyitni."
 }

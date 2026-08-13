@@ -19,5 +19,57 @@
   "languageLabel": "Language",
   "@languageLabel": {
     "description": "Field label above the language picker. The picker's own value says which language is active, so this must not repeat it."
+  },
+  "settingsTitle": "Preferences",
+  "@settingsTitle": {
+    "description": "Title of the screen holding the language and the data folder, and the tooltip on the button that opens it."
+  },
+  "firstRunTitle": "Welcome to Cirrhy",
+  "@firstRunTitle": {
+    "description": "Heading the very first time the app is opened, above the folder question. Cirrhy is the brand name and stays as it is."
+  },
+  "firstRunBody": "Choose where to keep your data. Everything lives in one file, so you can put it in a folder your sync service already watches — and pick the same folder on your other devices.",
+  "@firstRunBody": {
+    "description": "Explains why the app asks for a folder before it can be used. Deliberately names no sync provider: Cirrhy works with any of them and endorses none."
+  },
+  "firstRunContinue": "Continue",
+  "@firstRunContinue": {
+    "description": "Button that leaves the first-run screen. Only enabled once a folder has been chosen."
+  },
+  "storageSectionLabel": "Data folder",
+  "@storageSectionLabel": {
+    "description": "Section heading for the folder holding the Cirrhy file. 'Folder', not 'path' or 'location': on phones the user never sees a path."
+  },
+  "storageDescription": "Cirrhy keeps everything in a single file. Choosing a folder your sync service watches is what lets you use Cirrhy on more than one device.",
+  "@storageDescription": {
+    "description": "Explanatory text under the data folder setting."
+  },
+  "storageNotChosen": "No folder chosen yet",
+  "@storageNotChosen": {
+    "description": "Shown in place of the folder name before the user has picked one."
+  },
+  "storageChoose": "Choose folder…",
+  "@storageChoose": {
+    "description": "Button that opens the operating system's folder picker for the first time. The ellipsis is the standard hint that a dialog follows."
+  },
+  "storageChange": "Change folder…",
+  "@storageChange": {
+    "description": "Button that opens the folder picker when a folder has already been chosen, to move the file somewhere else."
+  },
+  "storageUnavailable": "Cirrhy cannot reach this folder any more. Choose it again.",
+  "@storageUnavailable": {
+    "description": "Shown when the stored handle stopped working — the folder was deleted or moved, or the operating system withdrew permission. The user's data is not lost; only the app's access to it is."
+  },
+  "storageWillAdopt": "This folder already has a Cirrhy file. Your data will be merged with it.",
+  "@storageWillAdopt": {
+    "description": "Confirmation after picking a folder that already contains a document, which is the normal case when setting up a second device. Merged, never replaced — say nothing that sounds like one file overwrites the other."
+  },
+  "storageWillCreate": "Cirrhy will create its file in this folder.",
+  "@storageWillCreate": {
+    "description": "Confirmation after picking an empty folder, as the counterpart to storageWillAdopt."
+  },
+  "storagePickFailed": "That folder could not be opened.",
+  "@storagePickFailed": {
+    "description": "Shown when the folder picker returned something the app cannot use. Rare, and not the user's fault — avoid blaming wording."
   }
 }

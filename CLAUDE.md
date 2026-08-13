@@ -4,7 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Greenfield. The repository contains only `init.md` (the product brief), this file, and `LICENSE` — no source, no build system, no git history yet. There is no stack chosen. Do not assume a language, framework, or toolchain; confirm with the user before scaffolding one, then replace this section with real build/test/run commands.
+**Stack confirmed: Flutter** (2026-08-13). A pub workspace with two members:
+
+- `packages/cirrhy_merge` — the storage and merge engine. Pure Dart, zero UI dependencies, only `crypto`. This is where the data-loss risk lives; it is fully tested headless.
+- `app` — the Flutter app, five targets. Depends on the engine; the engine never depends on it.
+
+Built against Flutter 3.44.8 / Dart 3.12.2. Run everything from the repo root:
+
+```sh
+flutter pub get                        # resolves the whole workspace
+flutter analyze                        # app + engine
+cd packages/cirrhy_merge && dart test  # engine (30 tests) — no -C/--directory flag exists
+cd app && flutter test                 # app widget/theme tests
+flutter build linux --debug            # verified target
+```
+
+There is **no UI yet**, deliberately — DESIGN.md §9 puts the engine first. `app/lib/main.dart` is a placeholder that wires the theme and nothing else. `app/lib/theme/` mirrors the Penpot token library; keep the two in step.
+
+`DocumentStore` (DESIGN.md §4.1) is the unimplemented piece: the platform port for file access. Everything above it is plain Dart.
 
 ## What Cirrhy is
 
@@ -32,7 +49,9 @@ The non-negotiables it establishes, so they are visible without a second file re
 - **File access is an OS-provided file handle. Cirrhy contains no network or cloud-provider code.** WebDAV/SFTP/Dropbox clients were considered and rejected — see DESIGN.md §4 before re-raising.
 - **No SQLite** — its `-wal`/`-shm`/`-journal` sidecars break the single-file promise.
 
-Still **Proposed, not confirmed**: the stack (Flutter, with the merge engine as a pure-Dart package), and JSON vs CBOR. Confirm with the user before scaffolding either.
+Still **Proposed, not confirmed**: JSON vs CBOR. JSON ships today behind a `DocumentCodec` interface, so swapping it does not reach into the merge engine — but it changes the on-disk format, so decide before real data exists.
+
+Two engine invariants that tests enforce and any change must preserve: the merge is **commutative** (`merge(a, b) == merge(b, a)`, ties included) and **idempotent**. Without both, the result depends on which side was passed first.
 
 ## License and naming
 

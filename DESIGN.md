@@ -137,9 +137,11 @@ Size is not a concern: a heavy user generates a few thousand entries a year.
 
 ---
 
-## 6. Stack — **Proposed, not confirmed**
+## 6. Stack — **Decided** (2026-08-13)
 
 **Flutter**, with the storage and merge engine as a **pure-Dart package with zero UI dependencies**, unit-tested independently of any app.
+
+Realised as a pub workspace: `app/` (Flutter, five targets) and `packages/cirrhy_merge/` (the engine). The app depends on the engine; the engine depends on nothing but `crypto`. Built and tested against Flutter 3.44.8 / Dart 3.12.2.
 
 Rationale:
 
@@ -183,17 +185,23 @@ Ecosystems that don't use reverse-DNS aren't bound: a Rust crate is `cirrhy`, a 
 
 ## 8. Open questions
 
-1. **Confirm the stack** (§6). Everything else is stack-independent.
-2. **JSON vs CBOR** (§5).
+1. ~~Confirm the stack (§6).~~ **Resolved 2026-08-13: Flutter.**
+2. **JSON vs CBOR** (§5). JSON is implemented behind a `DocumentCodec` interface, so switching does not reach into the merge engine. Decide before the format ships to a real user, since it changes the on-disk file.
 3. **Whether to encrypt the file.** KDBX is encrypted because it holds secrets; time-tracking data may not warrant it. Encryption would complicate inspection and repair. Probably no, but decide explicitly.
 4. **Timezone and DST handling** — not yet considered, and material for a time tracker. Storing UTC instants plus the originating timezone is the likely answer; entries spanning a DST transition are the test case.
 5. **Directory scope vs file scope** (§4.2) — confirm before the picker is built, since it constrains atomic writes.
 
-## 9. First thing to build
+## 9. First thing to build — **done** (2026-08-13)
 
 The storage engine, standalone and headless, before any UI: record model with UUIDs and timestamps, tombstones, history, the merge function, and the read-merge-write loop. It is the part that can lose user data, it is pure logic, and it is fully testable without a running app.
 
 The highest-value tests are the adversarial merge cases: concurrent edits to one entry, a delete racing an edit, and two devices with simultaneously running timers.
+
+Built as `packages/cirrhy_merge`, 30 tests green. Beyond the three cases above, the merge is asserted **commutative and idempotent** — `merge(a, b) == merge(b, a)`, including on exact timestamp ties, and re-merging changes nothing. Those two properties are what make it safe to run on every save without knowing which side is "ours"; without them the result would depend on argument order.
+
+`DocumentStore` (§4.1) is the only thing left unimplemented — the platform port. Everything above it is plain Dart and tested against an in-memory store.
+
+Still to do: an age limit on tombstones (currently only pruned when a record outlives them) and §8.4 timezone handling, which the model sidesteps today by storing UTC instants only.
 
 ---
 

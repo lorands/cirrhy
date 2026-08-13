@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# nix / devbox
+.direnv/
+.devbox/
+result
+result-*
+
+# Claude Code local overrides (project CLAUDE.md and skills are tracked)
+.claude/settings.local.json
+
+# Private product brief — local only, never published
+init.md
+IDEA.md
+
+# Stack-specific entries belong here once the stack is confirmed — see DESIGN.md.

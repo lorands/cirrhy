@@ -258,17 +258,23 @@ class _IdleCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                // Scales down rather than wraps: 48px digits next to the
-                // button run out of room on a 360dp-wide phone.
+                // Scales down rather than wraps: the digits next to the
+                // button run out of room on a 360dp-wide phone. Idle digits
+                // are smaller than the running card's — nothing is being
+                // measured yet, and the Start button is the point here.
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     formatTimer(Duration.zero, l10n.localeName),
-                    style: Type.timer.copyWith(color: colors.textMuted),
+                    style: Type.timer.copyWith(
+                      color: colors.textMuted,
+                      fontSize: 36,
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(width: Space.x4),
               FilledButton.icon(
                 onPressed: onStart,
                 icon: const Icon(Icons.play_arrow, size: 18),
@@ -406,6 +412,7 @@ class _RunningCardState extends State<_RunningCard> {
                   ),
                 ),
               ),
+              const SizedBox(width: Space.x4),
               _StopButton(onPressed: widget.onStop),
             ],
           ),

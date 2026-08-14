@@ -69,7 +69,7 @@ Two platform-shaped facts that look like mistakes and are not:
 
 Linux and Windows need no native code — a path is a durable handle, and `file_selector` supplies the dialog. The other three go through one channel, `com.lorands.cirrhy/documents`, implemented in `android/.../DocumentFolders.kt`, `ios/Runner/AppDelegate.swift` and `macos/Runner/MainFlutterWindow.swift`. **The two Swift files are near-duplicates on purpose**: sharing one file across the two Xcode targets means hand-editing both project files, which is a worse trade than keeping two short files in step. Backups are plain `dart:io` on all five, because app-private storage is a real path everywhere.
 
-**Linux and the Android emulator are verified.** Android's SAF path ran end to end on an API 36 emulator on 2026-08-14 (pick, adopt, read, write — the first write also caught a `kotlin.Unit`-over-the-channel crash, fixed in `DocumentFolders.kt`). The Swift has never been built. Say so rather than implying otherwise.
+**Linux, the Android emulator, macOS and iOS are verified.** Android's SAF path ran end to end on an API 36 emulator on 2026-08-14 (pick, adopt, read, write — the first write also caught a `kotlin.Unit`-over-the-channel crash, fixed in `DocumentFolders.kt`). The two Swift implementations were built and tested on the MacBook on 2026-08-14. Windows remains scaffolded but untested; say so rather than implying otherwise.
 
 ## App icons
 

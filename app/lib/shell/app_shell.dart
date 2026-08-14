@@ -227,12 +227,27 @@ class _AppShellState extends State<AppShell> {
                             onSelect: select,
                             session: widget.session,
                           ),
-                          Expanded(child: _content(_index)),
+                          // The rail keeps its own side clear, so this is
+                          // about the status bar over the content.
+                          Expanded(
+                            child: SafeArea(
+                              left: false,
+                              child: _content(_index),
+                            ),
+                          ),
                         ],
                       )
                     : Column(
                         children: [
-                          Expanded(child: _content(_index)),
+                          // Bottom is the bar's to keep clear, not the
+                          // content's — the bar already extends under the
+                          // home indicator.
+                          Expanded(
+                            child: SafeArea(
+                              bottom: false,
+                              child: _content(_index),
+                            ),
+                          ),
                           _BottomBar(
                             items: items,
                             selectedIndex: _index,
@@ -313,14 +328,21 @@ class _BottomBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
+  /// The bar's own height. The home-indicator inset is added to it rather
+  /// than taken out of it — sizing the container to a flat 72 and then putting
+  /// a `SafeArea` inside left the tabs 37px to lay out in on an iPhone, which
+  /// is three short of what an icon over a label needs.
   static const double _height = 72;
 
   @override
   Widget build(BuildContext context) {
     final colors = CirrhyTheme.of(context);
+    // The same source SafeArea reads, so the two always agree — notably when
+    // the keyboard covers the indicator and the inset goes to zero.
+    final inset = MediaQuery.paddingOf(context).bottom;
 
     return Container(
-      height: _height,
+      height: _height + inset,
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(top: BorderSide(color: colors.border)),

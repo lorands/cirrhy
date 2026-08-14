@@ -164,6 +164,47 @@ void main() {
       expect(tester.getTopLeft(find.byIcon(Icons.tune)).dx, greaterThan(220));
     });
 
+    testWidgets('a home indicator grows the bottom bar instead of squeezing '
+        'the tabs', (tester) async {
+      addTearDown(tester.view.reset);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(390, 844); // iPhone-shaped.
+      tester.view.padding = const FakeViewPadding(bottom: 34);
+
+      await pumpShell(tester);
+
+      // The bar used to be a flat 72 with the inset taken out of it, which
+      // left the icon-over-label tabs three pixels short and overflowed.
+      expect(tester.takeException(), isNull);
+      // And the labels sit above the indicator, not under it.
+      expect(
+        tester.getBottomLeft(find.text('Settings')).dy,
+        lessThanOrEqualTo(844 - 34),
+      );
+    });
+
+    testWidgets('a status bar does not sit over the destination content', (
+      tester,
+    ) async {
+      addTearDown(tester.view.reset);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
+
+      await pumpShell(tester);
+      await tester.tap(find.byKey(const Key('navTab2')));
+      await tester.pumpAndSettle();
+
+      // None of the four destinations carries its own top inset — the shell
+      // does it once for all of them. Projects is where it showed: its add
+      // button is the first thing in the list, and the status bar took the
+      // top of its tap target.
+      expect(
+        tester.getTopLeft(find.byKey(const Key('newProjectHeaderButton'))).dy,
+        greaterThanOrEqualTo(47),
+      );
+    });
+
     testWidgets('a wide surface uses the rail, not the bottom bar', (
       tester,
     ) async {

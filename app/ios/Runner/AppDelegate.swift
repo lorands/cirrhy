@@ -109,6 +109,10 @@ final class DocumentFolders: NSObject, UIDocumentPickerDelegate {
     // A folder, not a document (§4.2). Document scope would rule out writing a
     // sibling temp file and renaming over the original, so every save would
     // become an in-place overwrite of the file holding everything.
+    //
+    // This initialiser and `UTType.folder` are iOS 14, which is why the target
+    // is 14.0 rather than Flutter's template default of 13.0. The iOS 13 way
+    // in is the deprecated `documentTypes:in:`, not worth carrying.
     let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder], asCopy: false)
     picker.delegate = self
     picker.allowsMultipleSelection = false

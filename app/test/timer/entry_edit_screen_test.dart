@@ -539,6 +539,86 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(TimePickerDialog), findsNothing);
     });
+
+    testWidgets(
+      'create mode (entryId null) prefills a zero-length entry at now, hides '
+      'Delete and History, and Save mints a brand-new record',
+      (tester) async {
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await session.put(Client(id: 'acme', modified: now, name: 'Acme'));
+        await session.put(
+          Project(
+            id: 'p1',
+            modified: now,
+            name: 'Website',
+            clientId: 'acme',
+            locationChanged: now,
+          ),
+        );
+        await session.put(
+          Task(
+            id: 't1',
+            modified: now,
+            name: 'Landing page',
+            projectId: 'p1',
+            locationChanged: now,
+          ),
+        );
+        final openedAt = now;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: cirrhyLightTheme(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('en'),
+            home: EntryEditScreen(
+              session: session,
+              entryId: null,
+              clock: () => now,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Add entry'), findsOneWidget);
+        expect(find.text('Delete entry'), findsNothing);
+        expect(find.text('History'), findsNothing);
+        // Start and stop both read now's clock time — the honest 0:00
+        // prefill — and stop is live, not the open-entry em dash.
+        final hm = DateFormat.Hm('en');
+        expect(find.text(hm.format(openedAt.toLocal())), findsNWidgets(2));
+        expect(find.text('0:00'), findsOneWidget);
+        expect(find.text('—'), findsNothing);
+
+        await tester.enterText(find.byType(TextField), 'standup I forgot');
+        await tester.tap(find.text('Select task'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Landing page'));
+        await tester.pumpAndSettle();
+
+        now = now.add(const Duration(minutes: 2));
+        await tester.tap(find.text('Save'));
+        await tester.pump();
+        await session.idle;
+        await tester.pumpAndSettle();
+
+        expect(find.byType(EntryEditScreen), findsNothing);
+        final saved = session.document.entries.values.single;
+        expect(saved.id, isNotEmpty);
+        expect(saved.description, 'standup I forgot');
+        expect(saved.projectId, 'p1');
+        expect(saved.taskId, 't1');
+        // Times keep the prefill instant; only the record's own clocks move
+        // to the save moment.
+        expect(saved.start, openedAt);
+        expect(saved.stop, openedAt);
+        expect(saved.modified, now);
+        expect(saved.locationChanged, now);
+        expect(saved.history, isEmpty);
+      },
+    );
   });
 
   group('history through merge (non-widget)', () {

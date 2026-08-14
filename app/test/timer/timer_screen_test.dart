@@ -18,6 +18,7 @@ import 'package:cirrhy/l10n/generated/app_localizations.dart';
 import 'package:cirrhy/settings/document_location_preference.dart';
 import 'package:cirrhy/storage/document_location.dart';
 import 'package:cirrhy/theme/theme.dart';
+import 'package:cirrhy/timer/entry_edit_screen.dart';
 import 'package:cirrhy/timer/timer_screen.dart';
 import 'package:cirrhy_merge/cirrhy_merge.dart';
 import 'package:flutter/material.dart';
@@ -435,6 +436,55 @@ void main() {
       // Not just "some formatter ran" — the two locales must actually read
       // differently, or this test would pass even with the locale ignored.
       expect(dayLabels['en'], isNot(dayLabels['hu']));
+    });
+
+    testWidgets('the header + opens the entry screen in create mode, and '
+        'saving there logs a new entry in the list', (tester) async {
+      final session = await openSession(FakeDocumentDirectory());
+      addTearDown(session.dispose);
+
+      await pumpTimer(tester, session: session);
+      await tester.tap(find.byKey(const Key('addEntryButton')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EntryEditScreen), findsOneWidget);
+      expect(find.text('Add entry'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'from memory');
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      await session.idle;
+      await tester.pumpAndSettle();
+
+      // Back on the timer list, with the manual entry logged under Today.
+      expect(find.byType(EntryEditScreen), findsNothing);
+      expect(session.document.entries.values.single.description, 'from memory');
+      expect(find.text('from memory'), findsOneWidget);
+    });
+
+    testWidgets('backing out of create mode without saving writes nothing', (
+      tester,
+    ) async {
+      final session = await openSession(FakeDocumentDirectory());
+      addTearDown(session.dispose);
+
+      await pumpTimer(tester, session: session);
+      await tester.tap(find.byKey(const Key('addEntryButton')));
+      await tester.pumpAndSettle();
+      expect(find.byType(EntryEditScreen), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EntryEditScreen), findsNothing);
+      expect(session.document.entries, isEmpty);
+    });
+
+    testWidgets('without a session the header + is inert', (tester) async {
+      await pumpTimer(tester);
+      await tester.tap(find.byKey(const Key('addEntryButton')));
+      await tester.pumpAndSettle();
+      expect(find.byType(EntryEditScreen), findsNothing);
     });
   });
 }

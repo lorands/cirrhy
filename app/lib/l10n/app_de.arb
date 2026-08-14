@@ -52,6 +52,8 @@
   "newTaskHint": "Aufgabenname",
   "pickerEmpty": "Hier ist noch nichts — erstelle unten deine erste Aufgabe.",
   "editEntryTitle": "Eintrag bearbeiten",
+  "addEntryTitle": "Eintrag hinzufügen",
+  "addEntryTooltip": "Eintrag manuell hinzufügen",
   "descriptionLabel": "Beschreibung",
   "taskLabel": "Aufgabe",
   "dateLabel": "Datum",

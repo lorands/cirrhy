@@ -26,6 +26,7 @@ import '../theme/theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/entity_chip.dart';
 import '../widgets/entry_row.dart';
+import 'entry_edit_screen.dart';
 import 'start_timer_sheet.dart';
 
 const _markAsset = 'assets/logo/cirrhy-mark.png';
@@ -103,7 +104,19 @@ class _TimerScreenState extends State<TimerScreen> {
         Space.x8,
       ),
       children: [
-        const _Header(),
+        _Header(
+          onAddEntry: session == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => EntryEditScreen(
+                      session: session,
+                      entryId: null,
+                      clock: widget.clock,
+                    ),
+                  ),
+                ),
+        ),
         const SizedBox(height: Space.x6),
         if (myTimer == null)
           _IdleCard(
@@ -143,19 +156,43 @@ class _TimerScreenState extends State<TimerScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.onAddEntry});
+
+  /// Opens the entry screen in create mode — the manual-add flow for time
+  /// the user forgot to track. Null disables it, like every other affordance
+  /// on this screen without a session. No board in 09 mocks this; the button
+  /// mirrors the projects header's + (projects_screen.dart) rather than
+  /// inventing a new shape.
+  final VoidCallback? onAddEntry;
 
   @override
   Widget build(BuildContext context) {
+    final colors = CirrhyTheme.of(context);
     final l10n = AppLocalizations.of(context);
     final text = Theme.of(context).textTheme;
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(_markAsset, width: 30, height: 30),
         const SizedBox(width: Space.x2),
-        Text(l10n.appTitle, style: text.headlineMedium),
+        Expanded(child: Text(l10n.appTitle, style: text.headlineMedium)),
+        Tooltip(
+          message: l10n.addEntryTooltip,
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: InkWell(
+              key: const Key('addEntryButton'),
+              customBorder: const CircleBorder(),
+              onTap: onAddEntry,
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: Icon(Icons.add, color: colors.brand),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

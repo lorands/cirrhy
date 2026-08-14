@@ -52,6 +52,8 @@
   "newTaskHint": "Nome dell'attività",
   "pickerEmpty": "Ancora niente qui — crea la tua prima attività qui sotto.",
   "editEntryTitle": "Modifica voce",
+  "addEntryTitle": "Aggiungi voce",
+  "addEntryTooltip": "Aggiungi una voce manualmente",
   "descriptionLabel": "Descrizione",
   "taskLabel": "Attività",
   "dateLabel": "Data",

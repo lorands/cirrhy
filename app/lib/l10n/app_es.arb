@@ -52,6 +52,8 @@
   "newTaskHint": "Nombre de la tarea",
   "pickerEmpty": "Todavía no hay nada aquí — crea tu primera tarea abajo.",
   "editEntryTitle": "Editar entrada",
+  "addEntryTitle": "Añadir entrada",
+  "addEntryTooltip": "Añadir una entrada manualmente",
   "descriptionLabel": "Descripción",
   "taskLabel": "Tarea",
   "dateLabel": "Fecha",

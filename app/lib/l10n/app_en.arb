@@ -208,6 +208,14 @@
   "@editEntryTitle": {
     "description": "App bar title of the entry-edit screen (B5), opened by tapping a logged entry in the timer list."
   },
+  "addEntryTitle": "Add entry",
+  "@addEntryTitle": {
+    "description": "App bar title of the same entry screen when it is creating a new entry from scratch — the manual-add flow for time the user forgot to track — rather than editing a logged one."
+  },
+  "addEntryTooltip": "Add an entry manually",
+  "@addEntryTooltip": {
+    "description": "Tooltip on the + button in the timer screen's header that opens the entry screen in its add-new mode."
+  },
   "descriptionLabel": "Description",
   "@descriptionLabel": {
     "description": "Caption label above the entry's free-text description field on the edit screen."

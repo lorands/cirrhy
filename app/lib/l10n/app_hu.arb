@@ -52,6 +52,8 @@
   "newTaskHint": "Feladat neve",
   "pickerEmpty": "Még nincs itt semmi — hozd létre az első feladatot lent.",
   "editEntryTitle": "Bejegyzés szerkesztése",
+  "addEntryTitle": "Bejegyzés hozzáadása",
+  "addEntryTooltip": "Bejegyzés hozzáadása kézzel",
   "descriptionLabel": "Leírás",
   "taskLabel": "Feladat",
   "dateLabel": "Dátum",

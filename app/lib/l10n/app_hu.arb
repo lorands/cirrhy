@@ -41,6 +41,7 @@
   "timerEmptyTitle": "Még nincs bejegyzés",
   "timerEmptyBody": "Válassz egy feladatot, és indítsd el az első időmérődet. A rögzített munka itt jelenik meg, naponta csoportosítva.",
   "startTimerTitle": "Időmérő indítása",
+  "editTimerTitle": "Időmérő szerkesztése",
   "recentLabel": "Legutóbbiak",
   "chooseTaskTitle": "Feladat választása",
   "searchTasksHint": "Ügyfelek, projektek, feladatok keresése…",

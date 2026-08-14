@@ -164,6 +164,10 @@
   "@startTimerTitle": {
     "description": "Title of the start-timer bottom sheet, above the description field."
   },
+  "editTimerTitle": "Edit timer",
+  "@editTimerTitle": {
+    "description": "Title of the same bottom sheet when it opens in edit mode, from tapping the running timer's card, instead of starting a new timer."
+  },
   "recentLabel": "Recent",
   "@recentLabel": {
     "description": "Section heading above a row of quick-start entries built from recently logged work, in both the start-timer sheet and the task picker."

@@ -41,6 +41,7 @@
   "timerEmptyTitle": "Noch keine Einträge",
   "timerEmptyBody": "Wähle eine Aufgabe und starte deinen ersten Timer. Erfasste Arbeit erscheint hier, Tag für Tag.",
   "startTimerTitle": "Timer starten",
+  "editTimerTitle": "Timer bearbeiten",
   "recentLabel": "Zuletzt verwendet",
   "chooseTaskTitle": "Aufgabe auswählen",
   "searchTasksHint": "Kunden, Projekte, Aufgaben suchen…",

@@ -122,6 +122,7 @@ class _TimerScreenState extends State<TimerScreen> {
               session.projectById(myTimer.projectId)?.clientId,
             ),
             onStop: session.stopTimer,
+            onEdit: () => showEditTimerSheet(context, session),
             clock: widget.clock,
           ),
         // F1: another device's timer arrived in a merge and has not been
@@ -281,6 +282,7 @@ class _RunningCard extends StatefulWidget {
     required this.project,
     required this.client,
     required this.onStop,
+    required this.onEdit,
     required this.clock,
   });
 
@@ -288,6 +290,11 @@ class _RunningCard extends StatefulWidget {
   final Project? project;
   final Client? client;
   final VoidCallback onStop;
+
+  /// Opens the edit-timer sheet — wired to the status line, description and
+  /// chip, deliberately not to the timer row below them, so it can never
+  /// compete with the Stop button's own tap target.
+  final VoidCallback onEdit;
   final DateTime Function() clock;
 
   @override
@@ -329,40 +336,56 @@ class _RunningCardState extends State<_RunningCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: colors.running,
-                  shape: BoxShape.circle,
-                ),
+          // Material(transparency) rather than a bare InkWell — same reason
+          // as the idle card's chip: this can be pumped without a Scaffold
+          // ancestor. Only the status line, description and chip sit inside
+          // it; the timer readout and Stop button below stay outside, so the
+          // two tap targets never overlap.
+          Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: widget.onEdit,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: colors.running,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: Space.x2),
+                      Text(
+                        l10n.timerRunning,
+                        style: text.labelSmall?.copyWith(
+                          color: colors.running,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Space.x2),
+                  Text(
+                    hasDescription ? description : l10n.timerNoDescription,
+                    style: hasDescription
+                        ? text.bodyLarge
+                        : text.bodyLarge?.copyWith(color: colors.textMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (project != null) ...[
+                    const SizedBox(height: Space.x2),
+                    ProjectChip(project: project, client: widget.client),
+                  ],
+                ],
               ),
-              const SizedBox(width: Space.x2),
-              Text(
-                l10n.timerRunning,
-                style: text.labelSmall?.copyWith(
-                  color: colors.running,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: Space.x2),
-          Text(
-            hasDescription ? description : l10n.timerNoDescription,
-            style: hasDescription
-                ? text.bodyLarge
-                : text.bodyLarge?.copyWith(color: colors.textMuted),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (project != null) ...[
-            const SizedBox(height: Space.x2),
-            ProjectChip(project: project, client: widget.client),
-          ],
           const SizedBox(height: Space.x5),
           Row(
             children: [

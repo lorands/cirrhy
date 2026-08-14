@@ -32,22 +32,58 @@ Future<void> showStartTimerSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => _StartTimerSheet(session: session),
+    builder: (context) => _StartTimerSheet(session: session, editing: false),
+  );
+}
+
+/// Opens the same sheet in edit mode, for the running timer's card — there is
+/// no Penpot mockup for this, so it follows the app's own conventions rather
+/// than inventing new ones: same sheet, same picker, but prefilled from
+/// [DocumentSession.myTimer] and saving through [DocumentSession.updateTimer]
+/// instead of starting a new timer, so `startedAt` (and the elapsed time
+/// already on the clock) never moves.
+Future<void> showEditTimerSheet(BuildContext context, DocumentSession session) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => _StartTimerSheet(session: session, editing: true),
   );
 }
 
 class _StartTimerSheet extends StatefulWidget {
-  const _StartTimerSheet({required this.session});
+  const _StartTimerSheet({required this.session, required this.editing});
 
   final DocumentSession session;
+
+  /// Start mode creates a new timer; edit mode rewrites the running one in
+  /// place. The two share every widget below except the title, the primary
+  /// button and the "Recent" section — restarting from a recent entry while
+  /// editing the timer you are already in would be a confusing second way to
+  /// do the same thing.
+  final bool editing;
 
   @override
   State<_StartTimerSheet> createState() => _StartTimerSheetState();
 }
 
 class _StartTimerSheetState extends State<_StartTimerSheet> {
-  final _description = TextEditingController();
+  late final TextEditingController _description;
   TaskChoice? _choice;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefilled from whatever this device's timer holds right now — read
+    // once, at open, exactly like every other sheet's initial state. A
+    // concurrent edit arriving mid-sheet is not reflected, same as the
+    // start-timer sheet not reacting to entries logged while it is open.
+    final timer = widget.editing ? widget.session.myTimer : null;
+    _description = TextEditingController(text: timer?.description ?? '');
+    if (timer != null && (timer.taskId != null || timer.projectId != null)) {
+      _choice = TaskChoice(taskId: timer.taskId, projectId: timer.projectId);
+    }
+  }
 
   @override
   void dispose() {
@@ -60,17 +96,32 @@ class _StartTimerSheetState extends State<_StartTimerSheet> {
     if (choice != null && mounted) setState(() => _choice = choice);
   }
 
-  Future<void> _start({
+  /// Starts a new timer, or saves the running one in place — the race where
+  /// it stopped (locally, or via another device's merge) while this sheet was
+  /// open needs no special handling here: [DocumentSession.updateTimer] is
+  /// already a no-op with nothing running, so this just closes.
+  Future<void> _submit({
     String? projectId,
     String? taskId,
     String? description,
   }) async {
     final navigator = Navigator.of(context);
-    await widget.session.startTimer(
-      projectId: projectId ?? _choice?.projectId,
-      taskId: taskId ?? _choice?.taskId,
-      description: description ?? _description.text.trim(),
-    );
+    final resolvedProjectId = projectId ?? _choice?.projectId;
+    final resolvedTaskId = taskId ?? _choice?.taskId;
+    final resolvedDescription = description ?? _description.text.trim();
+    if (widget.editing) {
+      await widget.session.updateTimer(
+        projectId: resolvedProjectId,
+        taskId: resolvedTaskId,
+        description: resolvedDescription,
+      );
+    } else {
+      await widget.session.startTimer(
+        projectId: resolvedProjectId,
+        taskId: resolvedTaskId,
+        description: resolvedDescription,
+      );
+    }
     navigator.pop();
   }
 
@@ -80,7 +131,11 @@ class _StartTimerSheetState extends State<_StartTimerSheet> {
     final l10n = AppLocalizations.of(context);
     final text = Theme.of(context).textTheme;
     final session = widget.session;
-    final recents = _recentChoices(session, colors);
+    // Restart-from-recent has no place while editing the timer already
+    // running — hence not even computed in that mode.
+    final recents = widget.editing
+        ? const <_RecentChoice>[]
+        : _recentChoices(session, colors);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -117,7 +172,10 @@ class _StartTimerSheetState extends State<_StartTimerSheet> {
                   ),
                 ),
                 const SizedBox(height: Space.x4),
-                Text(l10n.startTimerTitle, style: text.headlineSmall),
+                Text(
+                  widget.editing ? l10n.editTimerTitle : l10n.startTimerTitle,
+                  style: text.headlineSmall,
+                ),
                 const SizedBox(height: Space.x4),
                 TextField(
                   key: const Key('startTimerSheetDescription'),
@@ -145,7 +203,7 @@ class _StartTimerSheetState extends State<_StartTimerSheet> {
                       for (final r in recents)
                         InkWell(
                           borderRadius: BorderRadius.circular(Radii.full),
-                          onTap: () => _start(
+                          onTap: () => _submit(
                             projectId: r.projectId,
                             taskId: r.taskId,
                             description: r.description,
@@ -158,14 +216,24 @@ class _StartTimerSheetState extends State<_StartTimerSheet> {
                 const SizedBox(height: Space.x6),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
-                    // A plain text lookup would also match the idle card's
-                    // own Start button, still mounted underneath this sheet.
-                    key: const Key('startTimerSheetStart'),
-                    onPressed: () => _start(),
-                    icon: const Icon(Icons.play_arrow, size: 18),
-                    label: Text(l10n.timerStart),
-                  ),
+                  // Edit mode reuses entry_edit_screen's plain Save button —
+                  // no play icon, since nothing is being (re)started — while
+                  // start mode keeps its own icon button.
+                  child: widget.editing
+                      ? FilledButton(
+                          // A plain text lookup would also match the idle
+                          // card's own Start button, still mounted
+                          // underneath this sheet.
+                          key: const Key('startTimerSheetStart'),
+                          onPressed: () => _submit(),
+                          child: Text(l10n.saveAction),
+                        )
+                      : FilledButton.icon(
+                          key: const Key('startTimerSheetStart'),
+                          onPressed: () => _submit(),
+                          icon: const Icon(Icons.play_arrow, size: 18),
+                          label: Text(l10n.timerStart),
+                        ),
                 ),
               ],
             ),

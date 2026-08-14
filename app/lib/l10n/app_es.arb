@@ -41,6 +41,7 @@
   "timerEmptyTitle": "Todavía no hay entradas",
   "timerEmptyBody": "Elige una tarea e inicia tu primer temporizador. El trabajo que registres aparecerá aquí, día a día.",
   "startTimerTitle": "Iniciar temporizador",
+  "editTimerTitle": "Editar temporizador",
   "recentLabel": "Recientes",
   "chooseTaskTitle": "Elige una tarea",
   "searchTasksHint": "Buscar clientes, proyectos, tareas…",

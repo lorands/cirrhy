@@ -196,6 +196,71 @@ void main() {
       expect(timer.description, 'the usual');
       expect(timer.startedAt, now);
     });
+
+    test('updateTimer changes task, project and description but keeps '
+        'startedAt untouched, and persists', () async {
+      final (session, _) = await openAt(dirA);
+      final startedAt = now;
+      await session.startTimer(description: 'first draft');
+
+      now = now.add(const Duration(minutes: 10));
+      await session.updateTimer(
+        projectId: 'project-1',
+        taskId: 'task-1',
+        description: 'final draft',
+      );
+
+      final timer = session.myTimer!;
+      expect(timer.startedAt, startedAt);
+      expect(timer.modified, now);
+      expect(timer.projectId, 'project-1');
+      expect(timer.taskId, 'task-1');
+      expect(timer.description, 'final draft');
+
+      // Not just in memory — the same is true of the file.
+      final stored = onDisk(dirA).runningTimers.values.single;
+      expect(stored.startedAt, startedAt);
+      expect(stored.projectId, 'project-1');
+      expect(stored.taskId, 'task-1');
+      expect(stored.description, 'final draft');
+    });
+
+    test('a later stopTimer files an entry carrying the updated fields but the '
+        'original start', () async {
+      final (session, _) = await openAt(dirA);
+      final startedAt = now;
+      await session.startTimer(description: 'first draft');
+
+      now = now.add(const Duration(minutes: 10));
+      await session.updateTimer(
+        projectId: 'project-1',
+        taskId: 'task-1',
+        description: 'final draft',
+      );
+
+      now = now.add(const Duration(minutes: 20));
+      await session.stopTimer();
+
+      expect(session.myTimer, isNull);
+      final logged = session.document.entries.values.single;
+      expect(logged.start, startedAt);
+      expect(logged.stop, now);
+      expect(logged.projectId, 'project-1');
+      expect(logged.taskId, 'task-1');
+      expect(logged.description, 'final draft');
+    });
+
+    test(
+      'updateTimer is a no-op when this device has no running timer',
+      () async {
+        final (session, _) = await openAt(dirA);
+
+        await session.updateTimer(description: 'nothing to edit into');
+
+        expect(session.myTimer, isNull);
+        expect(session.document.runningTimers, isEmpty);
+      },
+    );
   });
 
   group('records', () {

@@ -286,5 +286,232 @@ void main() {
 
       expect(find.text('Időmérő indítása'), findsOneWidget);
     });
+
+    group('edit mode (running card)', () {
+      testWidgets(
+        'tapping the running card opens the sheet in edit mode, prefilled '
+        'with the description and the full task path',
+        (tester) async {
+          final session = await openSession(FakeDocumentDirectory());
+          addTearDown(session.dispose);
+          await session.put(
+            Client(id: 'acme', modified: now, name: 'Acme Corp'),
+          );
+          await session.put(
+            Project(
+              id: 'p1',
+              modified: now,
+              name: 'Website',
+              clientId: 'acme',
+              locationChanged: now,
+              color: '#3B82F6',
+            ),
+          );
+          await session.put(
+            Task(
+              id: 't1',
+              modified: now,
+              name: 'Landing page',
+              projectId: 'p1',
+              locationChanged: now,
+            ),
+          );
+          await session.startTimer(
+            projectId: 'p1',
+            taskId: 't1',
+            description: 'first draft',
+          );
+
+          await pumpTimer(tester, session);
+          // The card's text area, not the timer readout or Stop button.
+          await tester.tap(find.text('first draft'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('Edit timer'), findsOneWidget);
+          expect(find.text('Start timer'), findsNothing);
+          final field = tester.widget<TextField>(
+            find.byKey(const Key('startTimerSheetDescription')),
+          );
+          expect(field.controller!.text, 'first draft');
+          expect(
+            find.text('Acme Corp › Website › Landing page'),
+            findsOneWidget,
+          );
+        },
+      );
+
+      testWidgets(
+        'a project-only running timer (no task) prefills the selector with '
+        'just the project path',
+        (tester) async {
+          final session = await openSession(FakeDocumentDirectory());
+          addTearDown(session.dispose);
+          await session.put(
+            Client(id: 'acme', modified: now, name: 'Acme Corp'),
+          );
+          await session.put(
+            Project(
+              id: 'p1',
+              modified: now,
+              name: 'Website',
+              clientId: 'acme',
+              locationChanged: now,
+              color: '#3B82F6',
+            ),
+          );
+          await session.startTimer(projectId: 'p1', description: 'planning');
+
+          await pumpTimer(tester, session);
+          await tester.tap(find.text('planning'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('Edit timer'), findsOneWidget);
+          // The running card underneath shows the identical "Acme Corp ›
+          // Website" text on its own project chip, so this is scoped to the
+          // sheet's own selector rather than a plain top-level find.text.
+          final selector = find.descendant(
+            of: find.byKey(const Key('startTimerSheetTaskSelector')),
+            matching: find.text('Acme Corp › Website'),
+          );
+          expect(selector, findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'editing the description and picking a different task, then Save, '
+        'updates myTimer with the new fields but the original startedAt',
+        (tester) async {
+          final session = await openSession(FakeDocumentDirectory());
+          addTearDown(session.dispose);
+          await session.put(
+            Client(id: 'acme', modified: now, name: 'Acme Corp'),
+          );
+          await session.put(
+            Project(
+              id: 'p1',
+              modified: now,
+              name: 'Website',
+              clientId: 'acme',
+              locationChanged: now,
+              color: '#3B82F6',
+            ),
+          );
+          await session.put(
+            Task(
+              id: 't1',
+              modified: now,
+              name: 'Landing page',
+              projectId: 'p1',
+              locationChanged: now,
+            ),
+          );
+          await session.put(
+            Task(
+              id: 't2',
+              modified: now,
+              name: 'New feature',
+              projectId: 'p1',
+              locationChanged: now,
+            ),
+          );
+          await session.startTimer(
+            projectId: 'p1',
+            taskId: 't1',
+            description: 'first draft',
+          );
+          final startedAt = session.myTimer!.startedAt;
+
+          now = now.add(const Duration(minutes: 12));
+          await pumpTimer(tester, session);
+          await tester.tap(find.text('first draft'));
+          await tester.pumpAndSettle();
+
+          await tester.enterText(
+            find.byKey(const Key('startTimerSheetDescription')),
+            'final draft',
+          );
+          await tester.tap(
+            find.byKey(const Key('startTimerSheetTaskSelector')),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('New feature'));
+          await tester.pumpAndSettle();
+
+          now = now.add(const Duration(minutes: 3));
+          await tester.tap(find.byKey(const Key('startTimerSheetStart')));
+          await tester.pump();
+          await session.idle;
+          await tester.pumpAndSettle();
+
+          final updated = session.myTimer;
+          expect(updated, isNotNull);
+          expect(
+            updated!.startedAt,
+            startedAt,
+            reason: 'elapsed time survives',
+          );
+          expect(updated.description, 'final draft');
+          expect(updated.taskId, 't2');
+          expect(updated.projectId, 'p1');
+          expect(find.text('Edit timer'), findsNothing);
+        },
+      );
+
+      testWidgets('the Recent section is absent in edit mode, though the same '
+          'entries show it in start mode', (tester) async {
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await session.put(
+          TimeEntry(
+            id: 'e1',
+            modified: now,
+            start: now.subtract(const Duration(hours: 2)),
+            stop: now.subtract(const Duration(hours: 1)),
+            projectId: null,
+            locationChanged: now,
+            description: 'design review',
+          ),
+        );
+        await session.startTimer(description: 'in progress');
+
+        await pumpTimer(tester, session);
+        await tester.tap(find.text('in progress'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Edit timer'), findsOneWidget);
+        expect(find.text('Recent'), findsNothing);
+
+        // Dismiss the edit sheet, stop the timer so the idle card's own
+        // start-timer sheet is reachable, and confirm the same entry does
+        // show up there — the absence above is edit mode's doing, not a
+        // general regression.
+        await tester.tapAt(const Offset(20, 20));
+        await tester.pumpAndSettle();
+        await session.stopTimer();
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('What are you working on?'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Start timer'), findsOneWidget);
+        expect(find.text('Recent'), findsOneWidget);
+      });
+
+      testWidgets('the Stop button still stops the timer without opening '
+          'the sheet', (tester) async {
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await session.startTimer(description: 'in progress');
+
+        await pumpTimer(tester, session);
+        await tester.tap(find.byKey(const Key('timerStopButton')));
+        await tester.pump();
+        await session.idle;
+        await tester.pumpAndSettle();
+
+        expect(session.myTimer, isNull);
+        expect(find.text('Edit timer'), findsNothing);
+        expect(find.text('Start timer'), findsNothing);
+      });
+    });
   });
 }

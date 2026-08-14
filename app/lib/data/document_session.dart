@@ -280,6 +280,33 @@ class DocumentSession extends ChangeNotifier {
         );
   });
 
+  /// Edits this device's running timer's task/project and description in
+  /// place. [RunningTimer.startedAt] is carried over untouched — the whole
+  /// point is fixing metadata mid-run without losing the elapsed time — only
+  /// [RunningTimer.modified] moves to now. A no-op when nothing is running on
+  /// this device: there is nothing to edit into, which also covers the race
+  /// where the timer stopped (locally or via another device's merge) while a
+  /// caller was still composing the edit.
+  Future<void> updateTimer({
+    String? projectId,
+    String? taskId,
+    String description = '',
+  }) => _commit((doc) {
+    final current = doc.runningTimers[deviceId];
+    if (current == null) return doc;
+    return doc.put(
+      RunningTimer(
+        deviceId: deviceId,
+        modified: _now(),
+        startedAt: current.startedAt,
+        projectId: projectId,
+        taskId: taskId,
+        description: description,
+        history: current.history,
+      ),
+    );
+  });
+
   /// Stops this device's timer, filing the interval as a [TimeEntry]. A no-op
   /// when nothing is running.
   Future<void> stopTimer() => _commit((doc) => doc.stopTimer(deviceId, _now()));

@@ -41,6 +41,7 @@
   "timerEmptyTitle": "Ancora nessuna voce",
   "timerEmptyBody": "Scegli un'attività e avvia il tuo primo timer. Il lavoro registrato comparirà qui, giorno per giorno.",
   "startTimerTitle": "Avvia timer",
+  "editTimerTitle": "Modifica timer",
   "recentLabel": "Recenti",
   "chooseTaskTitle": "Scegli un'attività",
   "searchTasksHint": "Cerca clienti, progetti, attività…",

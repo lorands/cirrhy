@@ -14,13 +14,16 @@
 
 import 'package:flutter/material.dart';
 
+import '../about/version.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../storage/document_directory.dart';
 import '../storage/document_location.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.dart';
+import 'about_screen.dart';
 import 'document_location_preference.dart';
 import 'locale_preference.dart';
+import 'theme_preference.dart';
 
 /// The preferences screen, and the first screen the app ever shows.
 ///
@@ -39,6 +42,7 @@ class SettingsScreen extends StatefulWidget {
     required this.localePreference,
     required this.locationPreference,
     required this.directory,
+    this.themePreference,
     this.firstRun = false,
     this.onContinue,
   });
@@ -46,6 +50,11 @@ class SettingsScreen extends StatefulWidget {
   final LocalePreference localePreference;
   final DocumentLocationPreference locationPreference;
   final DocumentDirectory directory;
+
+  /// Null in tests that do not exercise theming, and during first run, where
+  /// the reduced content never shows the Appearance row anyway. When present,
+  /// the General section grows a row for it.
+  final ThemePreference? themePreference;
 
   /// Drops the app bar, leads with the welcome, and offers the way forward
   /// only once a folder has been chosen.
@@ -113,22 +122,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final storage = _StorageSection(
+      location: widget.locationPreference.location,
+      note: _note,
+      busy: _picking,
+      onPick: _picking ? null : _pick,
+    );
+
+    // First run's content is deliberately reduced — no Appearance, no About,
+    // no footnote — and must stay exactly what it always was. This branch is
+    // kept separate from the full layout below rather than folded into it
+    // with a bunch of `if (!firstRun)` guards threaded through one shared
+    // section, because that would make an unrelated edit to the About
+    // section a place a first-run regression could hide.
     final body = ListView(
       padding: const EdgeInsets.all(Space.x6),
-      children: [
-        if (widget.firstRun) ...[
-          const _FirstRunHeader(),
-          const SizedBox(height: Space.x8),
-        ],
-        _StorageSection(
-          location: widget.locationPreference.location,
-          note: _note,
-          busy: _picking,
-          onPick: _picking ? null : _pick,
-        ),
-        const SizedBox(height: Space.x8),
-        _LanguageSection(preference: widget.localePreference),
-      ],
+      children: widget.firstRun
+          ? [
+              const _FirstRunHeader(),
+              const SizedBox(height: Space.x8),
+              storage,
+              const SizedBox(height: Space.x8),
+              _LanguageSection(preference: widget.localePreference),
+            ]
+          : [
+              _GeneralSection(
+                localePreference: widget.localePreference,
+                themePreference: widget.themePreference,
+              ),
+              const SizedBox(height: Space.x8),
+              storage,
+              const SizedBox(height: Space.x8),
+              const _AboutSection(),
+              const SizedBox(height: Space.x8),
+              _DeviceScopedFootnote(text: l10n.deviceScopedNote),
+            ],
     );
 
     return Scaffold(
@@ -314,6 +342,40 @@ class _NoteLine extends StatelessWidget {
   }
 }
 
+/// The General section: language, plus appearance once a [ThemePreference]
+/// is available to back it.
+///
+/// This is the one section that gathers rows which already had a home before
+/// this section existed — [_LanguageSection] is unchanged from what first run
+/// shows, reused here rather than re-implemented, so the two presentations
+/// cannot drift apart on what "Language" looks like.
+class _GeneralSection extends StatelessWidget {
+  const _GeneralSection({required this.localePreference, this.themePreference});
+
+  final LocalePreference localePreference;
+  final ThemePreference? themePreference;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = themePreference;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppLocalizations.of(context).generalSectionLabel,
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        const SizedBox(height: Space.x4),
+        _LanguageSection(preference: localePreference),
+        if (theme != null) ...[
+          const SizedBox(height: Space.x4),
+          _AppearanceSection(preference: theme),
+        ],
+      ],
+    );
+  }
+}
+
 class _LanguageSection extends StatelessWidget {
   const _LanguageSection({required this.preference});
 
@@ -330,6 +392,27 @@ class _LanguageSection extends StatelessWidget {
         ),
         const SizedBox(height: Space.x3),
         LanguagePicker(preference: preference),
+      ],
+    );
+  }
+}
+
+class _AppearanceSection extends StatelessWidget {
+  const _AppearanceSection({required this.preference});
+
+  final ThemePreference preference;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppLocalizations.of(context).appearanceLabel,
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        const SizedBox(height: Space.x3),
+        AppearancePicker(preference: preference),
       ],
     );
   }
@@ -368,6 +451,158 @@ class LanguagePicker extends StatelessWidget {
                 : const SizedBox(width: 18),
           ),
       ],
+    );
+  }
+}
+
+/// The light/dark override, the same row shape as [LanguagePicker] right
+/// above it.
+class AppearancePicker extends StatelessWidget {
+  const AppearancePicker({super.key, required this.preference});
+
+  final ThemePreference preference;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final colors = CirrhyTheme.of(context);
+
+    Icon? check(ThemeMode mode) => preference.mode == mode
+        ? Icon(Icons.check, size: 18, color: colors.brand)
+        : null;
+
+    return DropdownMenu<ThemeMode>(
+      initialSelection: preference.mode,
+      label: Text(l10n.appearanceLabel),
+      onSelected: (mode) {
+        if (mode != null) preference.set(mode);
+      },
+      textStyle: Theme.of(context).textTheme.bodyMedium,
+      dropdownMenuEntries: [
+        DropdownMenuEntry(
+          value: ThemeMode.system,
+          label: l10n.themeSystem,
+          leadingIcon: check(ThemeMode.system) ?? const SizedBox(width: 18),
+        ),
+        DropdownMenuEntry(
+          value: ThemeMode.light,
+          label: l10n.themeLight,
+          leadingIcon: check(ThemeMode.light) ?? const SizedBox(width: 18),
+        ),
+        DropdownMenuEntry(
+          value: ThemeMode.dark,
+          label: l10n.themeDark,
+          leadingIcon: check(ThemeMode.dark) ?? const SizedBox(width: 18),
+        ),
+      ],
+    );
+  }
+}
+
+/// The About section: a link to the full [AboutScreen] and a shortcut
+/// straight to the licence page, matching Penpot screen E1.
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final text = Theme.of(context).textTheme;
+    final colors = CirrhyTheme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.aboutSectionLabel, style: text.labelLarge),
+        const SizedBox(height: Space.x3),
+        Container(
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(Radii.lg),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            children: [
+              _AboutRow(
+                label: l10n.aboutCirrhy,
+                trailing: 'v$appVersion',
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
+              ),
+              Divider(height: 1, color: colors.border),
+              _AboutRow(
+                label: l10n.licenseLabel,
+                trailing: 'Apache 2.0',
+                onTap: () => showLicensePage(
+                  context: context,
+                  applicationName: 'Cirrhy',
+                  applicationVersion: appVersion,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AboutRow extends StatelessWidget {
+  const _AboutRow({
+    required this.label,
+    required this.trailing,
+    required this.onTap,
+  });
+
+  final String label;
+  final String trailing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = CirrhyTheme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Space.x4,
+          vertical: Space.x3,
+        ),
+        child: Row(
+          children: [
+            Expanded(child: Text(label, style: text.bodyMedium)),
+            Text(
+              trailing,
+              style: text.labelSmall?.copyWith(color: colors.textMuted),
+            ),
+            const SizedBox(width: Space.x2),
+            Icon(Icons.chevron_right, size: 18, color: colors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The reminder that closes the screen: DESIGN.md §3.7 stated in the user's
+/// own words, so the device-scoped choices right above it do not read as an
+/// unexplained oddity.
+class _DeviceScopedFootnote extends StatelessWidget {
+  const _DeviceScopedFootnote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CirrhyTheme.of(context);
+    return Text(
+      text,
+      style: Theme.of(
+        context,
+      ).textTheme.labelSmall?.copyWith(color: colors.textMuted),
     );
   }
 }

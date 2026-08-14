@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'package:cirrhy/about/version.dart';
 import 'package:cirrhy/l10n/generated/app_localizations.dart';
 import 'package:cirrhy/main.dart';
+import 'package:cirrhy/settings/about_screen.dart';
 import 'package:cirrhy/settings/document_location_preference.dart';
 import 'package:cirrhy/settings/locale_preference.dart';
 import 'package:cirrhy/settings/settings_screen.dart';
+import 'package:cirrhy/settings/theme_preference.dart';
 import 'package:cirrhy/storage/document_location.dart';
 import 'package:cirrhy/theme/theme.dart';
 import 'package:flutter/material.dart';
@@ -45,7 +48,9 @@ void main() {
     required FakeDocumentDirectory directory,
     required DocumentLocationPreference location,
     required LocalePreference locale,
+    ThemePreference? theme,
     bool firstRun = false,
+    Locale displayLocale = const Locale('en'),
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -53,13 +58,14 @@ void main() {
         theme: cirrhyLightTheme(),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('en'),
+        locale: displayLocale,
         home: ListenableBuilder(
           listenable: location,
           builder: (context, _) => SettingsScreen(
             localePreference: locale,
             locationPreference: location,
             directory: directory,
+            themePreference: theme,
             firstRun: firstRun,
           ),
         ),
@@ -248,6 +254,146 @@ void main() {
     );
   });
 
+  // The settings tab's default 800×600 test surface is tall enough for the
+  // original two sections, but not for General/Appearance/Data
+  // file/About/footnote all together — content below the fold is offstage
+  // and invisible to `find`, not merely scrolled. A taller surface, the same
+  // technique `app_shell_test.dart` uses for its wide-layout case, keeps
+  // these assertions about presence rather than about scroll position.
+  Future<void> useTallSurface(WidgetTester tester) async {
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+  }
+
+  group('sections', () {
+    testWidgets('General, Data file and About all render, with the footnote '
+        'under them', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(),
+        location: location,
+        locale: locale,
+        theme: await ThemePreference.load(),
+      );
+
+      expect(find.text('General'), findsOneWidget);
+      // DropdownMenu renders its own `label` text internally (for width
+      // measurement) in addition to the field label callers see, so the
+      // section's own row label and the picker's are both present but not
+      // each exactly once.
+      expect(find.text('Language'), findsWidgets);
+      expect(find.text('Appearance'), findsWidgets);
+      expect(find.text('Data folder'), findsOneWidget);
+      expect(find.text('About'), findsOneWidget);
+      expect(find.text('About Cirrhy'), findsOneWidget);
+      expect(find.text('v$appVersion'), findsOneWidget);
+      expect(find.text('Licence'), findsOneWidget);
+      expect(find.text('Apache 2.0'), findsOneWidget);
+      expect(
+        find.text(
+          'Language, appearance and folder are choices this device makes '
+          'for itself — they are never written into your document, so '
+          'they never sync.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the Appearance row is hidden without a ThemePreference', (
+      tester,
+    ) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(),
+        location: location,
+        locale: locale,
+      );
+
+      expect(find.text('General'), findsOneWidget);
+      expect(find.text('Language'), findsWidgets);
+      expect(find.text('Appearance'), findsNothing);
+    });
+
+    testWidgets('first run shows none of the new sections, even with a '
+        'ThemePreference available', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(),
+        location: location,
+        locale: locale,
+        theme: await ThemePreference.load(),
+        firstRun: true,
+      );
+
+      expect(find.text('General'), findsNothing);
+      expect(find.text('Appearance'), findsNothing);
+      expect(find.text('About'), findsNothing);
+      expect(find.text('About Cirrhy'), findsNothing);
+      expect(
+        find.textContaining('never written into your document'),
+        findsNothing,
+      );
+      // Unchanged: the language row it always had is still there.
+      expect(find.text('Language'), findsWidgets);
+    });
+
+    testWidgets('About Cirrhy pushes the About screen', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(),
+        location: location,
+        locale: locale,
+      );
+
+      await tester.tap(find.text('About Cirrhy'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AboutScreen), findsOneWidget);
+    });
+
+    testWidgets('Licence opens the licence page', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(),
+        location: location,
+        locale: locale,
+      );
+
+      await tester.tap(find.text('Licence'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LicensePage), findsOneWidget);
+    });
+
+    testWidgets('renders in Hungarian', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(),
+        location: location,
+        locale: locale,
+        theme: await ThemePreference.load(),
+        displayLocale: const Locale('hu'),
+      );
+
+      expect(find.text('Általános'), findsOneWidget);
+      expect(find.text('Megjelenés'), findsWidgets);
+      expect(find.text('Névjegy'), findsOneWidget);
+    });
+  });
+
   group('routing', () {
     testWidgets('the app opens on first run when no folder is chosen', (
       tester,
@@ -278,10 +424,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Welcome to Cirrhy'), findsNothing);
-      expect(
-        find.text('No UI yet — the merge engine comes first.'),
-        findsOneWidget,
-      );
+      expect(find.text('What are you working on?'), findsOneWidget);
     });
 
     testWidgets('continuing from first run reaches the app', (tester) async {
@@ -300,10 +443,7 @@ void main() {
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('No UI yet — the merge engine comes first.'),
-        findsOneWidget,
-      );
+      expect(find.text('What are you working on?'), findsOneWidget);
     });
 
     testWidgets('preferences are reachable from the app', (tester) async {
@@ -318,7 +458,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.settings_outlined));
+      // Settings is a tab in the shell now, not an app-bar icon on a
+      // placeholder screen.
+      await tester.tap(find.byIcon(Icons.tune));
       await tester.pumpAndSettle();
 
       expect(find.text('Preferences'), findsOneWidget);

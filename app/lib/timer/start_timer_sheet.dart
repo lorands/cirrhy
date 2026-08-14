@@ -150,92 +150,100 @@ class _StartTimerSheetState extends State<_StartTimerSheet> {
         ),
         child: SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.x6,
-              Space.x3,
-              Space.x6,
-              Space.x6,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colors.border,
-                      borderRadius: BorderRadius.circular(Radii.full),
+          // The keyboard can shrink the sheet below its content's height on
+          // a short phone; scrolling absorbs the difference instead of
+          // overflowing.
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Space.x6,
+                Space.x3,
+                Space.x6,
+                Space.x6,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colors.border,
+                        borderRadius: BorderRadius.circular(Radii.full),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: Space.x4),
-                Text(
-                  widget.editing ? l10n.editTimerTitle : l10n.startTimerTitle,
-                  style: text.headlineSmall,
-                ),
-                const SizedBox(height: Space.x4),
-                TextField(
-                  key: const Key('startTimerSheetDescription'),
-                  controller: _description,
-                  autofocus: true,
-                  decoration: InputDecoration(hintText: l10n.timerIdleHint),
-                ),
-                const SizedBox(height: Space.x3),
-                _TaskSelectorRow(
-                  choice: _choice,
-                  session: session,
-                  onTap: _pickTask,
-                ),
-                if (recents.isNotEmpty) ...[
-                  const SizedBox(height: Space.x5),
+                  const SizedBox(height: Space.x4),
                   Text(
-                    l10n.recentLabel,
-                    style: text.labelSmall?.copyWith(color: colors.textMuted),
+                    widget.editing ? l10n.editTimerTitle : l10n.startTimerTitle,
+                    style: text.headlineSmall,
                   ),
-                  const SizedBox(height: Space.x2),
-                  Wrap(
-                    spacing: Space.x2,
-                    runSpacing: Space.x2,
-                    children: [
-                      for (final r in recents)
-                        InkWell(
-                          borderRadius: BorderRadius.circular(Radii.full),
-                          onTap: () => _submit(
-                            projectId: r.projectId,
-                            taskId: r.taskId,
-                            description: r.description,
+                  const SizedBox(height: Space.x4),
+                  TextField(
+                    key: const Key('startTimerSheetDescription'),
+                    controller: _description,
+                    autofocus: true,
+                    decoration: InputDecoration(hintText: l10n.timerIdleHint),
+                  ),
+                  const SizedBox(height: Space.x3),
+                  _TaskSelectorRow(
+                    choice: _choice,
+                    session: session,
+                    onTap: _pickTask,
+                  ),
+                  if (recents.isNotEmpty) ...[
+                    const SizedBox(height: Space.x5),
+                    Text(
+                      l10n.recentLabel,
+                      style: text.labelSmall?.copyWith(color: colors.textMuted),
+                    ),
+                    const SizedBox(height: Space.x2),
+                    Wrap(
+                      spacing: Space.x2,
+                      runSpacing: Space.x2,
+                      children: [
+                        for (final r in recents)
+                          InkWell(
+                            borderRadius: BorderRadius.circular(Radii.full),
+                            onTap: () => _submit(
+                              projectId: r.projectId,
+                              taskId: r.taskId,
+                              description: r.description,
+                            ),
+                            child: EntityChip(
+                              label: r.label,
+                              dotColor: r.color,
+                            ),
                           ),
-                          child: EntityChip(label: r.label, dotColor: r.color),
-                        ),
-                    ],
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: Space.x6),
+                  SizedBox(
+                    width: double.infinity,
+                    // Edit mode reuses entry_edit_screen's plain Save button —
+                    // no play icon, since nothing is being (re)started — while
+                    // start mode keeps its own icon button.
+                    child: widget.editing
+                        ? FilledButton(
+                            // A plain text lookup would also match the idle
+                            // card's own Start button, still mounted
+                            // underneath this sheet.
+                            key: const Key('startTimerSheetStart'),
+                            onPressed: () => _submit(),
+                            child: Text(l10n.saveAction),
+                          )
+                        : FilledButton.icon(
+                            key: const Key('startTimerSheetStart'),
+                            onPressed: () => _submit(),
+                            icon: const Icon(Icons.play_arrow, size: 18),
+                            label: Text(l10n.timerStart),
+                          ),
                   ),
                 ],
-                const SizedBox(height: Space.x6),
-                SizedBox(
-                  width: double.infinity,
-                  // Edit mode reuses entry_edit_screen's plain Save button —
-                  // no play icon, since nothing is being (re)started — while
-                  // start mode keeps its own icon button.
-                  child: widget.editing
-                      ? FilledButton(
-                          // A plain text lookup would also match the idle
-                          // card's own Start button, still mounted
-                          // underneath this sheet.
-                          key: const Key('startTimerSheetStart'),
-                          onPressed: () => _submit(),
-                          child: Text(l10n.saveAction),
-                        )
-                      : FilledButton.icon(
-                          key: const Key('startTimerSheetStart'),
-                          onPressed: () => _submit(),
-                          icon: const Icon(Icons.play_arrow, size: 18),
-                          label: Text(l10n.timerStart),
-                        ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

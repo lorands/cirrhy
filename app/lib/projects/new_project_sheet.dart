@@ -114,64 +114,69 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
         ),
         child: SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.x6,
-              Space.x3,
-              Space.x6,
-              Space.x6,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colors.border,
-                      borderRadius: BorderRadius.circular(Radii.full),
+          // The keyboard can shrink the sheet below its content's height on
+          // a short phone; scrolling absorbs the difference instead of
+          // overflowing.
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Space.x6,
+                Space.x3,
+                Space.x6,
+                Space.x6,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colors.border,
+                        borderRadius: BorderRadius.circular(Radii.full),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: Space.x4),
-                Text(l10n.newProjectTitle, style: text.headlineSmall),
-                const SizedBox(height: Space.x5),
-                _FieldLabel(l10n.nameLabel),
-                const SizedBox(height: Space.x1),
-                TextField(
-                  key: const Key('newProjectNameField'),
-                  controller: _name,
-                  autofocus: true,
-                  decoration: InputDecoration(hintText: l10n.projectNameHint),
-                ),
-                const SizedBox(height: Space.x5),
-                _FieldLabel(l10n.clientLabel),
-                const SizedBox(height: Space.x1),
-                _SelectorRow(
-                  key: const Key('newProjectClientSelector'),
-                  label: client?.name ?? l10n.noClientLabel,
-                  muted: client == null,
-                  onTap: _pickClient,
-                ),
-                const SizedBox(height: Space.x5),
-                _FieldLabel(l10n.colorLabel),
-                const SizedBox(height: Space.x2),
-                ColorSwatchRow(
-                  selected: _color,
-                  onSelect: (hex) => setState(() => _color = hex),
-                ),
-                const SizedBox(height: Space.x6),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    key: const Key('createProjectButton'),
-                    onPressed: _name.text.trim().isEmpty ? null : _create,
-                    child: Text(l10n.createProjectAction),
+                  const SizedBox(height: Space.x4),
+                  Text(l10n.newProjectTitle, style: text.headlineSmall),
+                  const SizedBox(height: Space.x5),
+                  _FieldLabel(l10n.nameLabel),
+                  const SizedBox(height: Space.x1),
+                  TextField(
+                    key: const Key('newProjectNameField'),
+                    controller: _name,
+                    autofocus: true,
+                    decoration: InputDecoration(hintText: l10n.projectNameHint),
                   ),
-                ),
-              ],
+                  const SizedBox(height: Space.x5),
+                  _FieldLabel(l10n.clientLabel),
+                  const SizedBox(height: Space.x1),
+                  _SelectorRow(
+                    key: const Key('newProjectClientSelector'),
+                    label: client?.name ?? l10n.noClientLabel,
+                    muted: client == null,
+                    onTap: _pickClient,
+                  ),
+                  const SizedBox(height: Space.x5),
+                  _FieldLabel(l10n.colorLabel),
+                  const SizedBox(height: Space.x2),
+                  ColorSwatchRow(
+                    selected: _color,
+                    onSelect: (hex) => setState(() => _color = hex),
+                  ),
+                  const SizedBox(height: Space.x6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      key: const Key('createProjectButton'),
+                      onPressed: _name.text.trim().isEmpty ? null : _create,
+                      child: Text(l10n.createProjectAction),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

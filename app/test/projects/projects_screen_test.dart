@@ -311,5 +311,38 @@ void main() {
         expect(find.text('Freelance work'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'the new-project sheet scrolls above a tall keyboard instead of '
+      'overflowing',
+      (tester) async {
+        addTearDown(tester.view.reset);
+        tester.view.devicePixelRatio = 1.0;
+        tester.view.physicalSize = const Size(360, 720); // Mate 10 Pro-ish.
+        tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await pumpScreen(tester, session);
+
+        await tester.tap(find.byKey(const Key('newProjectHeaderButton')));
+        await tester.pumpAndSettle();
+
+        // Without the sheet's scroll view this layout overflows, which the
+        // framework reports as a test exception.
+        expect(tester.takeException(), isNull);
+
+        // And the button below the fold is reachable by scrolling the sheet.
+        await tester.drag(
+          find.byKey(const Key('newProjectNameField')),
+          const Offset(0, -240),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('createProjectButton')).hitTestable(),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

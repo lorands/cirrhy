@@ -513,5 +513,33 @@ void main() {
         expect(find.text('Start timer'), findsNothing);
       });
     });
+
+    testWidgets(
+      'the sheet scrolls above a tall keyboard instead of overflowing',
+      (tester) async {
+        addTearDown(tester.view.reset);
+        tester.view.devicePixelRatio = 1.0;
+        tester.view.physicalSize = const Size(360, 720); // Mate 10 Pro-ish.
+        tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await pumpTimer(tester, session);
+
+        await tester.tap(find.text('What are you working on?'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        await tester.drag(
+          find.byKey(const Key('startTimerSheetDescription')),
+          const Offset(0, -240),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('startTimerSheetStart')).hitTestable(),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

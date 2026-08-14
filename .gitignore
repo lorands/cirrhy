@@ -8,9 +8,8 @@ Thumbs.db
 *.swp
 *~
 
-# nix / devbox
+# nix / direnv
 .direnv/
-.devbox/
 result
 result-*
 
@@ -21,4 +20,39 @@ result-*
 init.md
 IDEA.md
 
-# Stack-specific entries belong here once the stack is confirmed — see DESIGN.md.
+# Dart / Flutter
+.dart_tool/
+build/
+.flutter-plugins-dependencies
+app/.flutter-plugins-dependencies
+
+# Only the workspace root's lockfile is tracked; members resolve against it.
+app/pubspec.lock
+packages/*/pubspec.lock
+
+# Localisation codegen. `flutter pub get` regenerates it from the ARB files,
+# so a fresh clone has it before anything needs it. The ARB files are tracked;
+# these are not.
+app/lib/l10n/generated/
+app/l10n-untranslated.json
+
+# Generated platform scaffolding that flutter regenerates on demand
+app/android/.gradle/
+app/android/local.properties
+app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+app/ios/Flutter/Generated.xcconfig
+app/ios/Flutter/flutter_export_environment.sh
+app/ios/Runner/GeneratedPluginRegistrant.*
+app/ios/Pods/
+app/macos/Flutter/GeneratedPluginRegistrant.swift
+app/macos/Flutter/ephemeral/
+app/macos/Pods/
+app/linux/flutter/ephemeral/
+app/linux/flutter/generated_plugin*
+app/windows/flutter/ephemeral/
+app/windows/flutter/generated_plugin*
+**/*.iml
+
+# Whose Apple ID signs a build is a property of the machine, not the project.
+# tool/ios-signing.sh writes it; Debug/Release.xcconfig include it optionally.
+app/ios/Flutter/Signing.xcconfig

@@ -68,6 +68,16 @@ The exception, and the thing to design deliberately: **the running timer is a mu
 
 **Model the running timer as a per-device record keyed by a device ID.** Two devices then merge into two open intervals that the UI surfaces for reconciliation, instead of one silently winning.
 
+### 3.7 Device-scoped settings stay out of the file — **Decided** (2026-08-13)
+
+The generalisation of §3.6: **state that describes a device rather than the work belongs in platform preferences, not the document.** Putting it in the file subjects it to last-write-wins merge, where the loser is a setting the user deliberately chose on the other device.
+
+The UI language is the first of these, and the test case. A Hungarian phone and an English work laptop are both legitimate for one user; a synced language would flip one device because the other changed. It is stored via `shared_preferences` as a nullable locale, where null — the default — means "follow the operating system".
+
+This does not weaken the single-file promise, which is about *tracking data*: clients, projects, tasks, entries. Losing a device's preferences costs a re-pick; losing an entry costs recorded work. The two do not deserve the same machinery.
+
+The boundary to apply when something new arrives: if losing it would lose recorded work, it goes in the document. If it only describes how this device presents that work, it does not. Window size, theme override and the chosen file handle all fall on the preferences side.
+
 ---
 
 ## 4. File access — **Decided**
@@ -90,11 +100,14 @@ The entire platform surface is one narrow interface, and the core depends only o
 
 | Platform | Implementation |
 | --- | --- |
-| Linux / macOS / Windows | plain filesystem path |
+| Linux / Windows | plain filesystem path |
+| macOS | `NSOpenPanel` → **security-scoped bookmark** (`.withSecurityScope`) as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` |
 | iOS | `UIDocumentPicker` → **security-scoped bookmark** as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` for reads and writes |
 | Android | SAF `ACTION_OPEN_DOCUMENT_TREE` → `takePersistableUriPermission` → `ContentResolver` streams |
 
-### 4.2 Ask for a folder, not a file — **Proposed**
+**macOS is an Apple platform here, not a desktop one.** Flutter's macOS template ships with App Sandbox enabled, and a sandboxed app's access to a picked folder dies with the process — the path still reads fine while the app runs, which is exactly what makes this worth stating: it looks correct until the first restart. Only a security-scoped bookmark makes the handle durable, so macOS follows iOS. Disabling the sandbox would make the path work and would also forfeit the Mac App Store; not worth it to save one file of Swift shared with iOS anyway.
+
+### 4.2 Ask for a folder, not a file — **Decided** (2026-08-13)
 
 Request **directory scope** at pick time rather than a single document.
 
@@ -110,6 +123,8 @@ Temp file, then rename over the original — KeePass's "file transactions", whic
 
 Be aware this is genuinely contentious in our exact deployment: replacing the file breaks its identity for sync clients, cloud clients holding a lock make delete-then-rename fail, and users hit real I/O errors on Google Drive/GVfs and corrupted databases on iOS Files-backed storage. Both KeePass and KeePassXC ship an option to disable it. Treat atomic-rename as the desktop default **with an escape hatch**.
 
+**Android cannot do this at all.** SAF has no replace-over-existing: `DocumentsContract.renameDocument` fails when the target name is taken, so the only sequences available are delete-then-rename or a plain in-place overwrite, and the first is strictly worse — it widens the window to include the moment when neither file exists. Android therefore writes in place, and the **app-private pre-write backup is not optional there**, it is the entire recovery story. §4.2's fallback rule, promoted to the rule.
+
 ### 4.4 Accepted failure modes
 
 These follow from choosing the OS route. They are mitigated by the merge engine, not avoided.
@@ -122,6 +137,24 @@ These follow from choosing the OS route. They are mitigated by the merge engine,
 ### 4.5 Offline
 
 The local copy is the working copy. The app must be fully functional with no sync having happened; Keepass2Android caches in the platform's no-backup directory for exactly this. Offline correctness must never depend on the sync client having run.
+
+### 4.6 Choosing the location — **Proposed** (2026-08-13)
+
+The user says where the document lives. That question is asked at first run and **must stay answerable afterwards** — this is a setting with a screen, not a one-time wizard step.
+
+**It asks for a folder, and it cannot be a path field.** Directory scope is §4.2. On mobile there is no path to type or show: SAF and `UIDocumentPicker` hand back an opaque handle, and its URI is not something to put in front of a user. The control is therefore *a button that opens the OS picker, plus the folder's display name* — on every platform, including desktop, where a path field would otherwise be tempting and would then be the one platform behaving differently.
+
+**Pick a folder; adopt what is already in it.** If the chosen folder already holds a Cirrhy document, open and merge it rather than asking "new or existing?". Setting up the second device is then the same three taps as the first — and it is the common case, since the entire point of the choice is a folder some sync client is already watching. The filename is fixed and shown rather than asked: one user, one document (§1), and a user-chosen name would break the adoption rule for nothing.
+
+**Changing it later is a move, not a preference write.** One flow serves three situations, and they should be built as one: first run, a deliberate move, and the forced re-pick after a handle goes stale or is revoked (§4.4). Relocating means pointing the store at the new handle and saving — read-merge-write (§3.2) already handles the case where the target holds a document, which is the case that would otherwise silently overwrite another device's history. The old file is left where it is: deleting a file inside someone's synced folder is not ours to do, and because the merge is a union, re-picking it later costs nothing.
+
+**It is the same kind of setting as the language, and it needs the same home.** Both are device-scoped platform preferences (§3.7), both are picked once and rarely revisited, and neither belongs in the document. That makes a **preferences screen** the next screen to build: it holds the language picker — currently parked on the placeholder screen as scaffolding — and the location. First run should be that same screen in a first-run presentation rather than a separate wizard, so there is one place where either setting can be changed, one set of strings to translate, and no second implementation of the picker that drifts from the first.
+
+**The handle is device-scoped and lives in platform preferences, never in the document** — §3.6 and §3.7, and here the argument is not even about merge semantics: an iOS security-scoped bookmark is meaningless on Linux. Two devices keeping the file in different places is normal, not a conflict. Stored beside the handle is a human-readable label, because neither a bookmark blob nor a SAF URI can be shown.
+
+**First run asks, and the app waits for the answer.** Offering a working default instead — app-private, labelled as not synced, relocate later — was considered and dropped. It reads as the friendlier option and is worse in two concrete ways. The app-private container path is not stable across an iOS reinstall or restore, so the location chosen to be the safe temporary one is the only one that can silently move out from under the handle. And a default that is not synced quietly opts the user out of the single promise the product makes, in the one moment they were paying attention to the question. The picker is three taps; the gate is honest.
+
+**Backups are not a second path question.** Take an automatic pre-write copy into app-private storage — §4.2's fallback rule, worth applying always rather than only when directory scope is unavailable — invisible and unasked. A "keep backups beside the file" toggle can live in settings, off by default. It does not belong on the first-run screen: asking twice before the app has been used once, for something nobody looks at until after something has gone wrong, buys a worse first launch and no safety.
 
 ---
 
@@ -137,9 +170,11 @@ Size is not a concern: a heavy user generates a few thousand entries a year.
 
 ---
 
-## 6. Stack — **Proposed, not confirmed**
+## 6. Stack — **Decided** (2026-08-13)
 
 **Flutter**, with the storage and merge engine as a **pure-Dart package with zero UI dependencies**, unit-tested independently of any app.
+
+Realised as a pub workspace: `app/` (Flutter, five targets) and `packages/cirrhy_merge/` (the engine). The app depends on the engine; the engine depends on nothing but `crypto`. Built and tested against Flutter 3.44.8 / Dart 3.12.2.
 
 Rationale:
 
@@ -183,17 +218,44 @@ Ecosystems that don't use reverse-DNS aren't bound: a Rust crate is `cirrhy`, a 
 
 ## 8. Open questions
 
-1. **Confirm the stack** (§6). Everything else is stack-independent.
-2. **JSON vs CBOR** (§5).
+1. ~~Confirm the stack (§6).~~ **Resolved 2026-08-13: Flutter.**
+2. **JSON vs CBOR** (§5). JSON is implemented behind a `DocumentCodec` interface, so switching does not reach into the merge engine. Decide before the format ships to a real user, since it changes the on-disk file.
 3. **Whether to encrypt the file.** KDBX is encrypted because it holds secrets; time-tracking data may not warrant it. Encryption would complicate inspection and repair. Probably no, but decide explicitly.
 4. **Timezone and DST handling** — not yet considered, and material for a time tracker. Storing UTC instants plus the originating timezone is the likely answer; entries spanning a DST transition are the test case.
-5. **Directory scope vs file scope** (§4.2) — confirm before the picker is built, since it constrains atomic writes.
+5. ~~**Directory scope vs file scope** (§4.2).~~ **Resolved 2026-08-13: directory scope**, forced by the location picker (§4.6), which is the thing that asks the OS for one or the other. Atomic writes and beside-the-file backups both need a sibling temp.
+6. **Import from other trackers** (§10) — the shape of the seam, not whether to have one.
 
-## 9. First thing to build
+## 9. First thing to build — **done** (2026-08-13)
 
 The storage engine, standalone and headless, before any UI: record model with UUIDs and timestamps, tombstones, history, the merge function, and the read-merge-write loop. It is the part that can lose user data, it is pure logic, and it is fully testable without a running app.
 
 The highest-value tests are the adversarial merge cases: concurrent edits to one entry, a delete racing an edit, and two devices with simultaneously running timers.
+
+Built as `packages/cirrhy_merge`, 30 tests green. Beyond the three cases above, the merge is asserted **commutative and idempotent** — `merge(a, b) == merge(b, a)`, including on exact timestamp ties, and re-merging changes nothing. Those two properties are what make it safe to run on every save without knowing which side is "ours"; without them the result would depend on argument order.
+
+`DocumentStore` (§4.1) is implemented on all five platforms as of 2026-08-13, together with the location picker of §4.6: a plain path on Linux and Windows, SAF with a persisted tree permission on Android, and a security-scoped bookmark on macOS and iOS. The pre-write backup is plain `dart:io` everywhere, since app-private storage is a real filesystem path even where the user's folder is not.
+
+**Verified on Linux and, as of 2026-08-14, on an Android emulator.** The engine and the Dart half of the port are covered headless, including relocating into a folder that already holds another device's document — the case §4.6 rests on. The Android SAF path has run end to end (pick, adopt, read, write) on an API 36 emulator; its first real write surfaced a reply-encoding crash (`kotlin.Unit` is not encodable by the standard method codec — a void method must answer null), fixed in all three platform channel implementations since the Swift twins shared the bug shape. macOS and iOS have still not been built, which needs the MacBook. Treat the two Swift files as unproven until then.
+
+Still to do: an age limit on tombstones (currently only pruned when a record outlives them) and §8.4 timezone handling, which the model sidesteps today by storing UTC instants only. Also open on the Apple side: a bookmark that resolves as stale is used as-is, because handing a refreshed handle back to Dart needs a channel shape the port does not have yet.
+
+---
+
+## 10. Import from other trackers — **Open** (raised 2026-08-13)
+
+Cirrhy exists because Clockify/Toggl/Kimai were unsatisfying, so its users arrive with history in one of them. There has to be a way in.
+
+**Cirrhy should not carry per-vendor importers.** Each one is a CSV/JSON dialect that changes without notice, for a single-user app that will see each migration once. Instead, expose one solid, well-documented way to get records in, and let an agent — Claude or equivalent — do the vendor-specific mapping from whatever the source exports. That is the kind of one-off, schema-guessing work an agent is genuinely good at, and it keeps five vendor parsers out of a codebase whose merge engine is the thing that must stay trustworthy.
+
+What that costs us is documentation quality: the seam only works if the format and the entity model are specified well enough for something that has never seen the code to produce a valid document. That spec is the deliverable, more than any code.
+
+An **embedded MCP server** was the other idea, and is probably overkill: it means shipping a server inside an offline single-user app, and it sits awkwardly against §4's rule that Cirrhy contains no network code. A documented file format plus the existing read-merge-write path may already be the whole feature — import becomes "produce a valid Cirrhy document, then merge it", which is a code path we already have and already test.
+
+Open, and to settle before it is built:
+
+- **Whether the seam is the file format or an API.** If it is the format (§5), import is just `merge`, and §3's commutativity means a bad import can be re-run rather than undone. That is the cheap answer and the one to disprove before considering anything larger.
+- **Re-import must not duplicate.** Records are identified by UUID (§3.1), and a vendor export carries none. Importing the same export twice would mint fresh UUIDs and double every entry. Some stable mapping from the source's own ID to ours has to exist, or import has to be defined as a one-time operation and enforced as one.
+- **Where the mapping lives.** Client/project/task hierarchies differ between vendors; a Toggl project may be a Cirrhy client. That judgement is the agent's job, but the result has to land in something reviewable before it is merged into real data.
 
 ---
 

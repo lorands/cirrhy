@@ -1,0 +1,68 @@
+name: cirrhy
+description: "A single-file personal time tracker."
+publish_to: none
+
+# versionName / CFBundleShortVersionString + build number.
+version: 0.1.0+1
+
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Localisation. The app ships hu/en/es/it/de and must stay open to more —
+  # see the Languages section of CLAUDE.md. intl is deliberately unconstrained;
+  # flutter_localizations pins it to the version the SDK was built against, and
+  # any tighter constraint here just breaks on SDK upgrades.
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  # Device-local settings — currently just the language override. Explicitly
+  # NOT the Cirrhy document: DESIGN.md §3.6 keeps device-scoped state out of
+  # the merged file, and a synced language would flip the UI on one device
+  # because you changed it on another. BSD-3-Clause, so Apache-2.0 clean.
+  shared_preferences: ^2.5.5
+
+  # The folder picker on Linux and Windows, where a plain path is a durable
+  # handle (DESIGN.md §4.1). The three Apple/Android targets do not use it:
+  # they need a security-scoped bookmark or a persisted SAF permission, which
+  # no picker package returns, so they go through our own platform channel.
+  # flutter/packages, BSD-3-Clause — Apache-2.0 clean.
+  file_selector: ^1.0.3
+
+  # App-private storage for the pre-write backups (§4.2, §4.6). Resolves to a
+  # real filesystem path on all five targets, which is why backups are plain
+  # dart:io everywhere and never part of the platform channel.
+  # flutter/packages, BSD-3-Clause.
+  path_provider: ^2.1.5
+
+  # Joining a folder handle to a file name. Already in the tree via
+  # flutter_test; declared because lib/ code uses it directly. Unconstrained
+  # for the same reason as intl — the SDK pins it. dart-lang, BSD-3-Clause.
+  path: any
+
+  # The storage and merge engine. Pure Dart, no UI dependencies — see
+  # DESIGN.md §6. The app depends on it; it never depends on the app.
+  cirrhy_merge:
+    path: ../packages/cirrhy_merge
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  # Runs gen-l10n from the ARB files in lib/l10n; see l10n.yaml.
+  generate: true
+  # The logo lives at the repo root in assets/logo/. Flutter only bundles
+  # assets from inside this package, so the rendered mark is copied into
+  # app/assets/logo/ and declared here — that copy, not the repo-root SVG, is
+  # what CirrhyWatermark loads.
+  assets:
+    - assets/logo/cirrhy-mark.png

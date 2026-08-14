@@ -1,0 +1,12 @@
+# Pub workspace root. Not a package that ships — it exists so the app and the
+# engine resolve against one lockfile and one SDK constraint.
+name: cirrhy_workspace
+description: Cirrhy — a single-file personal time tracker.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+workspace:
+  - app
+  - packages/cirrhy_merge

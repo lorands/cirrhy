@@ -1,0 +1,5 @@
+#include "Generated.xcconfig"
+
+// Signing, which is per-machine and untracked — see tool/ios-signing.sh.
+// This file backs both Release and Profile; Debug.xcconfig is its twin.
+#include? "Signing.xcconfig"

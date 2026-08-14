@@ -1,0 +1,606 @@
+{
+  "@@locale": "en",
+  "appTitle": "Cirrhy",
+  "@appTitle": {
+    "description": "The product name, shown in the OS task switcher and window title. A brand name — leave it untranslated in every locale."
+  },
+  "languageName": "English",
+  "@languageName": {
+    "description": "This language's name written in itself, for a language picker. Never translate it into another language: the Hungarian entry says Magyar, not Hungarian."
+  },
+  "languageSystem": "Use the system language",
+  "@languageSystem": {
+    "description": "The option in the language picker that hands the choice back to the OS. This is the default: Cirrhy only overrides the system language if the user asks it to."
+  },
+  "languageLabel": "Language",
+  "@languageLabel": {
+    "description": "Field label above the language picker. The picker's own value says which language is active, so this must not repeat it."
+  },
+  "generalSectionLabel": "General",
+  "@generalSectionLabel": {
+    "description": "Section heading on the preferences screen (E1) grouping the language and appearance rows."
+  },
+  "appearanceLabel": "Appearance",
+  "@appearanceLabel": {
+    "description": "Field label above the light/dark/system picker, in the General section of the preferences screen (E1). Same shape as languageLabel: the picker's own value says which mode is active, so this must not repeat it."
+  },
+  "themeSystem": "System",
+  "@themeSystem": {
+    "description": "Option in the appearance picker (E1) that follows the operating system's light/dark setting. The default, matching languageSystem's role for the language picker."
+  },
+  "themeLight": "Light",
+  "@themeLight": {
+    "description": "Option in the appearance picker (E1) that forces the light colour scheme regardless of the operating system's setting."
+  },
+  "themeDark": "Dark",
+  "@themeDark": {
+    "description": "Option in the appearance picker (E1) that forces the dark colour scheme regardless of the operating system's setting."
+  },
+  "aboutSectionLabel": "About",
+  "@aboutSectionLabel": {
+    "description": "Section heading on the preferences screen (E1) holding the link to the About screen (E3) and the licence shortcut."
+  },
+  "aboutCirrhy": "About Cirrhy",
+  "@aboutCirrhy": {
+    "description": "Row on the preferences screen (E1) that opens the About screen (E3); also that screen's own app bar title. Cirrhy is the brand name and stays as it is."
+  },
+  "licenseLabel": "Licence",
+  "@licenseLabel": {
+    "description": "Row label for the licence shortcut, on both the preferences screen (E1) and the About screen (E3). British spelling to match Cirrhy's other UI copy."
+  },
+  "deviceScopedNote": "Language, appearance and folder are choices this device makes for itself — they are never written into your document, so they never sync.",
+  "@deviceScopedNote": {
+    "description": "Muted footnote at the bottom of the preferences screen (E1), stating DESIGN.md §3.7 in the user's own words: these three settings live on the device, not in the synced Cirrhy document."
+  },
+  "settingsTitle": "Preferences",
+  "@settingsTitle": {
+    "description": "Title of the screen holding the language and the data folder, and the tooltip on the button that opens it."
+  },
+  "firstRunTitle": "Welcome to Cirrhy",
+  "@firstRunTitle": {
+    "description": "Heading the very first time the app is opened, above the folder question. Cirrhy is the brand name and stays as it is."
+  },
+  "firstRunBody": "Choose where to keep your data. Everything lives in one file, so you can put it in a folder your sync service already watches — and pick the same folder on your other devices.",
+  "@firstRunBody": {
+    "description": "Explains why the app asks for a folder before it can be used. Deliberately names no sync provider: Cirrhy works with any of them and endorses none."
+  },
+  "firstRunContinue": "Continue",
+  "@firstRunContinue": {
+    "description": "Button that leaves the first-run screen. Only enabled once a folder has been chosen."
+  },
+  "storageSectionLabel": "Data folder",
+  "@storageSectionLabel": {
+    "description": "Section heading for the folder holding the Cirrhy file. 'Folder', not 'path' or 'location': on phones the user never sees a path."
+  },
+  "storageDescription": "Cirrhy keeps everything in a single file. Choosing a folder your sync service watches is what lets you use Cirrhy on more than one device.",
+  "@storageDescription": {
+    "description": "Explanatory text under the data folder setting."
+  },
+  "storageNotChosen": "No folder chosen yet",
+  "@storageNotChosen": {
+    "description": "Shown in place of the folder name before the user has picked one."
+  },
+  "storageChoose": "Choose folder…",
+  "@storageChoose": {
+    "description": "Button that opens the operating system's folder picker for the first time. The ellipsis is the standard hint that a dialog follows."
+  },
+  "storageChange": "Change folder…",
+  "@storageChange": {
+    "description": "Button that opens the folder picker when a folder has already been chosen, to move the file somewhere else."
+  },
+  "storageUnavailable": "Cirrhy cannot reach this folder any more. Choose it again.",
+  "@storageUnavailable": {
+    "description": "Shown when the stored handle stopped working — the folder was deleted or moved, or the operating system withdrew permission. The user's data is not lost; only the app's access to it is."
+  },
+  "storageWillAdopt": "This folder already has a Cirrhy file. Your data will be merged with it.",
+  "@storageWillAdopt": {
+    "description": "Confirmation after picking a folder that already contains a document, which is the normal case when setting up a second device. Merged, never replaced — say nothing that sounds like one file overwrites the other."
+  },
+  "storageWillCreate": "Cirrhy will create its file in this folder.",
+  "@storageWillCreate": {
+    "description": "Confirmation after picking an empty folder, as the counterpart to storageWillAdopt."
+  },
+  "storagePickFailed": "That folder could not be opened.",
+  "@storagePickFailed": {
+    "description": "Shown when the folder picker returned something the app cannot use. Rare, and not the user's fault — avoid blaming wording."
+  },
+  "tabTimer": "Timer",
+  "@tabTimer": {
+    "description": "Label for the Timer destination in the app's bottom tab bar or side rail — the main screen with the running timer and recent entries."
+  },
+  "tabReports": "Reports",
+  "@tabReports": {
+    "description": "Label for the Reports destination in the app's bottom tab bar or side rail — time aggregated and filtered over a date range."
+  },
+  "tabProjects": "Projects",
+  "@tabProjects": {
+    "description": "Label for the Projects destination in the app's bottom tab bar or side rail — clients, projects and tasks."
+  },
+  "tabSettings": "Settings",
+  "@tabSettings": {
+    "description": "Label for the Settings destination in the app's bottom tab bar or side rail. Distinct wording from settingsTitle is fine — this is a short nav label, not the screen's own heading."
+  },
+  "timerIdleHint": "What are you working on?",
+  "@timerIdleHint": {
+    "description": "Muted prompt shown above the timer card's controls when no timer is running, inviting the user to pick a task before starting one."
+  },
+  "timerSelectTask": "Select task",
+  "@timerSelectTask": {
+    "description": "Label on the chip that will open the task picker. Currently inert — a later screen wires up the picker it opens."
+  },
+  "timerStart": "Start",
+  "@timerStart": {
+    "description": "Label on the button that starts a new timer, next to a play icon."
+  },
+  "timerRunning": "Running",
+  "@timerRunning": {
+    "description": "Small status label next to a coloured dot on the timer card, shown while this device's timer is running."
+  },
+  "timerNoDescription": "(no description)",
+  "@timerNoDescription": {
+    "description": "Placeholder shown in place of a time entry's description, on the running card or in the entry list, when the entry was logged with no description at all."
+  },
+  "timerToday": "Today",
+  "@timerToday": {
+    "description": "Heading for the group of logged entries whose day is the current calendar day, in the user's local timezone."
+  },
+  "timerYesterday": "Yesterday",
+  "@timerYesterday": {
+    "description": "Heading for the group of logged entries whose day is the calendar day before today, in the user's local timezone."
+  },
+  "timerRestartTooltip": "Start a new timer from this entry",
+  "@timerRestartTooltip": {
+    "description": "Tooltip on the small run button next to a past entry, which starts a new timer carrying that entry's project, task and description — the app's primary one-tap-restart interaction."
+  },
+  "timerEmptyTitle": "No entries yet",
+  "@timerEmptyTitle": {
+    "description": "Heading shown instead of the entry list when nothing has been logged at all yet."
+  },
+  "timerEmptyBody": "Pick a task and start your first timer. Work you log will show up here, day by day.",
+  "@timerEmptyBody": {
+    "description": "Body text under timerEmptyTitle, explaining what will appear once the user starts logging time."
+  },
+  "startTimerTitle": "Start timer",
+  "@startTimerTitle": {
+    "description": "Title of the start-timer bottom sheet, above the description field."
+  },
+  "editTimerTitle": "Edit timer",
+  "@editTimerTitle": {
+    "description": "Title of the same bottom sheet when it opens in edit mode, from tapping the running timer's card, instead of starting a new timer."
+  },
+  "recentLabel": "Recent",
+  "@recentLabel": {
+    "description": "Section heading above a row of quick-start entries built from recently logged work, in both the start-timer sheet and the task picker."
+  },
+  "chooseTaskTitle": "Choose task",
+  "@chooseTaskTitle": {
+    "description": "Title of the task picker sheet, opened from the start-timer sheet's task selector row."
+  },
+  "searchTasksHint": "Search clients, projects, tasks…",
+  "@searchTasksHint": {
+    "description": "Hint text in the task picker's search field. Matching runs against client, project and task names."
+  },
+  "allTasksLabel": "All",
+  "@allTasksLabel": {
+    "description": "Section heading above the full client / project / task hierarchy in the task picker."
+  },
+  "noClientLabel": "No client",
+  "@noClientLabel": {
+    "description": "Heading in the task picker's hierarchy for projects that have no client, grouped together in place of a client name."
+  },
+  "noProjectLabel": "No project",
+  "@noProjectLabel": {
+    "description": "Heading in the task picker's hierarchy, nested under noClientLabel, for tasks that have no project of their own."
+  },
+  "newTaskAction": "New task…",
+  "@newTaskAction": {
+    "description": "Button at the bottom of the task picker that reveals an inline field for creating a new task on the spot. The ellipsis is the standard hint that a field follows, matching storageChoose."
+  },
+  "newTaskHint": "Task name",
+  "@newTaskHint": {
+    "description": "Hint text in the inline field that appears after tapping newTaskAction."
+  },
+  "pickerEmpty": "Nothing here yet — create your first task below.",
+  "@pickerEmpty": {
+    "description": "Shown in the task picker's All section when the document has no clients, projects or tasks at all yet — not shown merely because a search matched nothing."
+  },
+  "editEntryTitle": "Edit entry",
+  "@editEntryTitle": {
+    "description": "App bar title of the entry-edit screen (B5), opened by tapping a logged entry in the timer list."
+  },
+  "descriptionLabel": "Description",
+  "@descriptionLabel": {
+    "description": "Caption label above the entry's free-text description field on the edit screen."
+  },
+  "taskLabel": "Task",
+  "@taskLabel": {
+    "description": "Caption label above the task selector row on the edit screen, which opens the task picker (B4)."
+  },
+  "dateLabel": "Date",
+  "@dateLabel": {
+    "description": "Caption label above the field showing the entry's local calendar day, which opens a date picker."
+  },
+  "startLabel": "Start",
+  "@startLabel": {
+    "description": "Caption label above the field showing the entry's start clock time, which opens a time picker."
+  },
+  "stopLabel": "Stop",
+  "@stopLabel": {
+    "description": "Caption label above the field showing the entry's stop clock time. The field shows an em dash and opens nothing when the entry is still open, with no stop recorded yet."
+  },
+  "durationLabel": "Duration",
+  "@durationLabel": {
+    "description": "Caption label above the read-only duration, recomputed live from the edited start and stop."
+  },
+  "startStopUnit": "Start and stop always travel together",
+  "@startStopUnit": {
+    "description": "Muted caption next to the duration reminding the reader that start and stop are edited, saved and merged as a single unit, never separately."
+  },
+  "stopNextDay": "Ends the next day",
+  "@stopNextDay": {
+    "description": "Small warning caption shown in place of startStopUnit when the edited stop clock time is at or before the start clock time, meaning the entry is interpreted as running past midnight into the next day. Not a blocking error."
+  },
+  "saveAction": "Save",
+  "@saveAction": {
+    "description": "Label on the full-width button that saves the edited entry."
+  },
+  "deleteEntryAction": "Delete entry",
+  "@deleteEntryAction": {
+    "description": "Label on the danger-coloured button that opens the delete confirmation for this entry."
+  },
+  "deleteEntryConfirmTitle": "Delete this entry?",
+  "@deleteEntryConfirmTitle": {
+    "description": "Title of the dialog confirming permanent deletion of the entry."
+  },
+  "deleteEntryConfirmBody": "It disappears from every device. Its history goes with it.",
+  "@deleteEntryConfirmBody": {
+    "description": "Body text of the delete confirmation dialog. 'It' refers to the entry; deleting removes both the entry and its kept history once the deletion syncs to every device."
+  },
+  "cancelAction": "Cancel",
+  "@cancelAction": {
+    "description": "Generic label on the button that dismisses a confirmation dialog without acting. Reusable wherever a confirm/cancel pair is needed."
+  },
+  "deleteAction": "Delete",
+  "@deleteAction": {
+    "description": "Label on the confirming button inside the delete dialog — distinct from deleteEntryAction, which is the button that opens the dialog in the first place."
+  },
+  "historyLabel": "History",
+  "@historyLabel": {
+    "description": "Heading above the list of demoted prior versions of this entry, shown only when at least one exists."
+  },
+  "restoreAction": "Restore",
+  "@restoreAction": {
+    "description": "Button on a history entry that makes that prior version live again, demoting the currently-live version into history in its place."
+  },
+  "historyFootnote": "Older versions are kept inside the entry — a lost edit is recoverable.",
+  "@historyFootnote": {
+    "description": "Muted note under the history list, explaining why past versions are kept at all."
+  },
+  "searchProjectsHint": "Search…",
+  "@searchProjectsHint": {
+    "description": "Hint text in the search field on the projects list (C1), filtering clients and projects by name."
+  },
+  "clientSummary": "{count, plural, =1{1 project} other{{count} projects}} · {total} this month",
+  "@clientSummary": {
+    "description": "Muted caption to the right of a client's name on the projects list (C1): how many non-archived projects it has, and how much time was logged across them this calendar month. total is a duration already formatted as H:MM.",
+    "placeholders": {
+      "count": {"type": "num"},
+      "total": {"type": "String"}
+    }
+  },
+  "projectSummary": "{count, plural, =1{1 task} other{{count} tasks}} · {total} this month",
+  "@projectSummary": {
+    "description": "Muted caption to the right of a project's name on the client detail screen (C2): how many non-archived tasks it has, and how much time was logged on it this calendar month. total is a duration already formatted as H:MM.",
+    "placeholders": {
+      "count": {"type": "num"},
+      "total": {"type": "String"}
+    }
+  },
+  "taskCount": "{count, plural, =1{1 task} other{{count} tasks}}",
+  "@taskCount": {
+    "description": "Muted caption next to a project row on the projects list (C1): how many non-archived tasks it has, with no time total alongside it.",
+    "placeholders": {
+      "count": {"type": "num"}
+    }
+  },
+  "archivedLabel": "Archived",
+  "@archivedLabel": {
+    "description": "Heading on the collapsed section at the bottom of the projects list (C1) holding archived clients and projects."
+  },
+  "archivedCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@archivedCount": {
+    "description": "Muted count next to archivedLabel: the combined number of archived clients and archived projects, collapsed under one generic noun because the two kinds are mixed together in the same count."
+  },
+  "unarchiveAction": "Unarchive",
+  "@unarchiveAction": {
+    "description": "Button next to an archived client or project once the Archived section (C1) is expanded, which clears its archived flag."
+  },
+  "projectsEmpty": "No clients or projects yet — add one with +.",
+  "@projectsEmpty": {
+    "description": "Muted centered hint shown on the projects list (C1) when the document has no clients or projects at all yet."
+  },
+  "renameAction": "Rename",
+  "@renameAction": {
+    "description": "Title of the dialog opened from the pencil icon on the client (C2) and project (C3) detail screens, which renames the record."
+  },
+  "newProjectAction": "New project…",
+  "@newProjectAction": {
+    "description": "Trailing row at the bottom of a client's project card (C2) that opens the new-project sheet (C4) with this client preselected. The ellipsis matches storageChoose's convention that a dialog follows."
+  },
+  "archiveClientAction": "Archive client",
+  "@archiveClientAction": {
+    "description": "Danger-coloured button at the bottom of the client detail screen (C2) that archives the client."
+  },
+  "archiveNote": "Archiving hides it from pickers — logged time stays in reports.",
+  "@archiveNote": {
+    "description": "Muted footnote under archiveClientAction and archiveProjectAction, explaining that archiving is reversible and never discards logged time."
+  },
+  "clientLabel": "Client",
+  "@clientLabel": {
+    "description": "Row label on the project detail screen (C3) showing the project's client, which opens the client chooser when tapped."
+  },
+  "chooseClientTitle": "Choose client",
+  "@chooseClientTitle": {
+    "description": "Title of the bottom sheet that lists clients to assign a project to, opened from clientLabel's row on C3 and the CLIENT row on the new-project sheet (C4)."
+  },
+  "newClientAction": "New client…",
+  "@newClientAction": {
+    "description": "Row at the bottom of the client chooser sheet that reveals an inline field for creating a new client on the spot, the same shape as newTaskAction."
+  },
+  "clientNameHint": "Client name",
+  "@clientNameHint": {
+    "description": "Hint text in the inline field that appears after tapping newClientAction."
+  },
+  "colorLabel": "Colour",
+  "@colorLabel": {
+    "description": "Row label on the project detail screen (C3) above the colour swatches, and the field label on the new-project sheet (C4)."
+  },
+  "tasksLabel": "Tasks",
+  "@tasksLabel": {
+    "description": "Heading above the task list on the project detail screen (C3)."
+  },
+  "loggedAmount": "{amount} logged",
+  "@loggedAmount": {
+    "description": "Muted caption under a task's name on the project detail screen (C3), when at least one entry has been logged against it. amount is a duration already formatted as H:MM.",
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "neverStarted": "never started",
+  "@neverStarted": {
+    "description": "Muted caption under a task's name on the project detail screen (C3), shown instead of loggedAmount when no entry has ever been logged against it."
+  },
+  "taskRunFootnote": "The run button starts a timer straight from a task — from anywhere.",
+  "@taskRunFootnote": {
+    "description": "Muted footnote under the task card on the project detail screen (C3), explaining what the small run button next to each task does."
+  },
+  "archiveProjectAction": "Archive project",
+  "@archiveProjectAction": {
+    "description": "Danger-coloured button at the bottom of the project detail screen (C3) that archives the project."
+  },
+  "newProjectTitle": "New project",
+  "@newProjectTitle": {
+    "description": "Title of the new-project bottom sheet (C4)."
+  },
+  "nameLabel": "Name",
+  "@nameLabel": {
+    "description": "Field label above the project name field on the new-project sheet (C4)."
+  },
+  "projectNameHint": "Project name",
+  "@projectNameHint": {
+    "description": "Hint text in the project name field on the new-project sheet (C4)."
+  },
+  "createProjectAction": "Create project",
+  "@createProjectAction": {
+    "description": "Full-width button at the bottom of the new-project sheet (C4) that creates the project. Disabled until the name field is non-blank."
+  },
+  "thisMonthLabel": "This month",
+  "@thisMonthLabel": {
+    "description": "Left-hand column heading of the stats card on the client detail screen (C2), above a duration total for the current calendar month."
+  },
+  "allTimeLabel": "All time",
+  "@allTimeLabel": {
+    "description": "Right-hand column heading of the stats card on the client detail screen (C2), above a duration total across every logged entry."
+  },
+  "rangeDay": "Day",
+  "@rangeDay": {
+    "description": "Segment on the reports screen (D1) selecting a one-day report window. A noun naming the length of the window, not an imperative."
+  },
+  "rangeWeek": "Week",
+  "@rangeWeek": {
+    "description": "Segment on the reports screen (D1) selecting a one-week report window. The week starts on whichever day the locale starts its weeks on."
+  },
+  "rangeMonth": "Month",
+  "@rangeMonth": {
+    "description": "Segment on the reports screen (D1) selecting a calendar-month report window."
+  },
+  "rangeCustom": "Custom",
+  "@rangeCustom": {
+    "description": "Segment on the reports screen (D1) that opens the custom-range sheet (D4) so the user can choose the window themselves."
+  },
+  "summaryView": "Summary",
+  "@summaryView": {
+    "description": "Segment selecting the reports summary (D1) — the total, the per-day chart and the per-project breakdown."
+  },
+  "entriesView": "Entries",
+  "@entriesView": {
+    "description": "Segment selecting the reports entries list (D3) — every individual logged entry in the window, grouped by day."
+  },
+  "totalLabel": "Total",
+  "@totalLabel": {
+    "description": "Caption above the report's headline duration: everything logged in the current window, after filters."
+  },
+  "byProjectLabel": "By project",
+  "@byProjectLabel": {
+    "description": "Heading above the reports card that breaks the window's total down per project."
+  },
+  "filteredNote": "Filtered: {summary}",
+  "@filteredNote": {
+    "description": "Muted note under the by-project card on the reports summary (D1), naming what the numbers were narrowed to. Shown only when at least one filter is active.",
+    "placeholders": {
+      "summary": {"type": "String"}
+    }
+  },
+  "reportsEmpty": "Nothing tracked in this range.",
+  "@reportsEmpty": {
+    "description": "Shown in place of the report body when no finished entry falls in the chosen window once the filters have been applied. A statement about this range only — the user may well have plenty of time logged elsewhere."
+  },
+  "entriesSummary": "{count, plural, =1{1 entry} other{{count} entries}}",
+  "@entriesSummary": {
+    "description": "How many entries the reports entries view (D3) is listing. Composed into a caption line alongside the range and the total.",
+    "placeholders": {
+      "count": {"type": "num"}
+    }
+  },
+  "entriesFootnote": "Every row keeps its run button — reports restart work too.",
+  "@entriesFootnote": {
+    "description": "Muted footnote under the reports entries list (D3), pointing out that an entry can be restarted from a report exactly as it can from the timer screen."
+  },
+  "filtersTitle": "Filters",
+  "@filtersTitle": {
+    "description": "Title of the report filters sheet (D2), and the tooltip on the header button that opens it."
+  },
+  "clientsFilterLabel": "Clients",
+  "@clientsFilterLabel": {
+    "description": "Section heading above the client chips in the report filters sheet (D2)."
+  },
+  "projectsFilterLabel": "Projects",
+  "@projectsFilterLabel": {
+    "description": "Section heading above the project chips in the report filters sheet (D2)."
+  },
+  "tasksFilterLabel": "Tasks",
+  "@tasksFilterLabel": {
+    "description": "Section heading above the task chips in the report filters sheet (D2)."
+  },
+  "billableOnly": "Billable only",
+  "@billableOnly": {
+    "description": "Label on the switch in the report filters sheet (D2) that narrows the report to entries marked billable."
+  },
+  "clearAction": "Clear",
+  "@clearAction": {
+    "description": "Button in the report filters sheet (D2) that switches every filter off at once. It resets the filters; it never deletes anything."
+  },
+  "showEntriesAction": "{count, plural, =1{Show 1 entry} other{Show {count} entries}}",
+  "@showEntriesAction": {
+    "description": "The confirming button of the report filters sheet (D2). Its count updates live as chips are picked, so the user sees how much the filters keep before applying them.",
+    "placeholders": {
+      "count": {"type": "num"}
+    }
+  },
+  "customRangeTitle": "Custom range",
+  "@customRangeTitle": {
+    "description": "Title of the custom range sheet (D4), where the report window is chosen by preset or by picking two dates."
+  },
+  "presetThisWeek": "This week",
+  "@presetThisWeek": {
+    "description": "Preset chip on the custom range sheet (D4) for the week containing today, starting on whichever day the locale starts its weeks on."
+  },
+  "presetLastWeek": "Last week",
+  "@presetLastWeek": {
+    "description": "Preset chip on the custom range sheet (D4) for the whole week before the one containing today."
+  },
+  "presetThisMonth": "This month",
+  "@presetThisMonth": {
+    "description": "Preset chip on the custom range sheet (D4) for the calendar month containing today. Wording may match thisMonthLabel; this one is a chip on a sheet."
+  },
+  "presetLast30": "Last 30 days",
+  "@presetLast30": {
+    "description": "Preset chip on the custom range sheet (D4) for the thirty days ending today, today included. A rolling window, not a calendar month."
+  },
+  "pickDatesAction": "Pick dates…",
+  "@pickDatesAction": {
+    "description": "Row on the custom range sheet (D4) that opens the operating system's date range picker. The ellipsis is the standard hint that a dialog follows, matching storageChoose."
+  },
+  "versionLine": "Version {version} · Apache 2.0",
+  "@versionLine": {
+    "description": "Muted caption under the wordmark on the About screen (E3), naming the app version and licence together. version is the app's version number with no leading 'v' and no build number, e.g. '0.1.0'.",
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "aboutBody": "A personal time tracker built around one promise: all your data in a single file you own.",
+  "@aboutBody": {
+    "description": "Centered product description on the About screen (E3), under the version line."
+  },
+  "thirdPartyNotices": "Third-party notices",
+  "@thirdPartyNotices": {
+    "description": "Row on the About screen (E3) that opens the licence page, which also lists every third-party package's licence text — the same destination as the Licence row above it, under a heading a reader looking for open-source credits would recognise."
+  },
+  "aboutTagline": "Circadian rhythm — the clock you already run on.",
+  "@aboutTagline": {
+    "description": "Muted caption at the bottom of the About screen (E3), explaining the brand name: Cirrhy is short for Circadian Rhythm. Translate idiomatically rather than word-for-word where a literal rendering of 'the clock you already run on' would read awkwardly."
+  },
+  "twoTimersTitle": "Two timers were running",
+  "@twoTimersTitle": {
+    "description": "Title of the warning banner on the timer screen (F1) when a sync brings in a timer another device left running while this one also tracked. A calm statement of fact, not an error — nothing was lost."
+  },
+  "twoTimersBody": "This device and another both tracked time while they were apart. Both intervals are kept.",
+  "@twoTimersBody": {
+    "description": "Body of the two-timers banner (F1). 'Apart' means the devices had not synced with each other for a while; the promise that both intervals are kept is the point of the message."
+  },
+  "thisDeviceLabel": "This device",
+  "@thisDeviceLabel": {
+    "description": "Caption over the reconciliation card (F1) showing the timer running on the device the user is holding, as opposed to otherDeviceLabel."
+  },
+  "otherDeviceLabel": "Another device",
+  "@otherDeviceLabel": {
+    "description": "Caption over a reconciliation card (F1) showing a timer that some other device left running. Deliberately vague: the document does not record device names, only opaque ids."
+  },
+  "startedAtTime": "started {time}",
+  "@startedAtTime": {
+    "description": "Caption under another device's running timer on the reconciliation card (F1), saying when that timer was started. time is a clock time already formatted for the locale, e.g. '13:05'.",
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "keepBothAction": "Keep both running",
+  "@keepBothAction": {
+    "description": "The filled button on the two-timers banner (F1). Dismisses the prompt and leaves every device's timer running — the safe default, since each device owns its own timer."
+  },
+  "stopForeignAction": "Stop it now",
+  "@stopForeignAction": {
+    "description": "Outlined button on the two-timers banner (F1) that stops the other device's timer from here, filing its tracked time as a normal entry. 'It' is the other device's timer."
+  },
+  "twoTimersFootnote": "Nothing was discarded — each device keeps its own timer, so the merge never has to pick a winner.",
+  "@twoTimersFootnote": {
+    "description": "Muted footnote under the two-timers banner (F1), stating DESIGN.md §3.6 in the user's own words: per-device timers mean a sync conflict never silently discards tracked time."
+  },
+  "mergedChanges": "{count, plural, =1{Synced — merged 1 change} other{Synced — merged {count} changes}}",
+  "@mergedChanges": {
+    "description": "Toast shown after a re-read of the file brought in records another device had written (F2). count is how many records the merge added.",
+    "placeholders": {
+      "count": {"type": "num"}
+    }
+  },
+  "newFromSync": "new from another device",
+  "@newFromSync": {
+    "description": "Small caption on an entry row in the timer list (F2) that arrived in the last sync rather than being logged on this device. Lowercase by design — it is an annotation, not a heading."
+  },
+  "folderUnreachableTitle": "Can't reach your folder",
+  "@folderUnreachableTitle": {
+    "description": "Title of the dialog (A3) shown when the chosen data folder stops being reachable — deleted, moved, or its permission revoked."
+  },
+  "folderUnreachableBody": "The folder holding cirrhy.json is not available — it may have moved, or its permission was revoked. Your data is safe; pick the folder again to reconnect.",
+  "@folderUnreachableBody": {
+    "description": "Body of the folder-unreachable dialog (A3). cirrhy.json is the fixed file name and stays untranslated. 'Your data is safe' is the load-bearing reassurance: the file still exists, only this device's access to it broke."
+  },
+  "reselectFolderAction": "Re-select folder…",
+  "@reselectFolderAction": {
+    "description": "The filled button on the folder-unreachable dialog (A3), which opens the operating system's folder picker again. The ellipsis is the standard hint that a dialog follows, matching storageChoose."
+  },
+  "notNowAction": "Not now",
+  "@notNowAction": {
+    "description": "Text button on the folder-unreachable dialog (A3) that dismisses it without re-selecting. The app keeps working in memory; the dialog returns only if the folder goes unreachable again."
+  },
+  "syncedAtTime": "Synced · {time}",
+  "@syncedAtTime": {
+    "description": "Status line in the desktop rail's footer (G1): when the file was last re-read and merged. time is a clock time already formatted for the locale, e.g. '13:05'. Keep the middle dot separator.",
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "folderUnreachableShort": "Folder unreachable",
+  "@folderUnreachableShort": {
+    "description": "Status line in the desktop rail's footer (G1) while the data folder cannot be reached — the compact counterpart of folderUnreachableTitle."
+  }
+}

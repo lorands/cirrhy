@@ -4,7 +4,87 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Greenfield. The repository contains only `init.md` (the product brief), this file, and `LICENSE` — no source, no build system, no git history yet. There is no stack chosen. Do not assume a language, framework, or toolchain; confirm with the user before scaffolding one, then replace this section with real build/test/run commands.
+**Stack confirmed: Flutter** (2026-08-13). A pub workspace with two members:
+
+- `packages/cirrhy_merge` — the storage and merge engine. Pure Dart, zero UI dependencies, only `crypto`. This is where the data-loss risk lives; it is fully tested headless.
+- `app` — the Flutter app, five targets. Depends on the engine; the engine never depends on it.
+
+Built against Flutter 3.44.8 / Dart 3.12.2. Run everything from the repo root:
+
+```sh
+flutter pub get                        # resolves the whole workspace; also runs gen-l10n
+tool/check.sh                          # analyze + report formatting
+tool/test.sh                           # engine (33 tests) then app (263)
+
+tool/dev.sh                            # desktop + mobile side by side, one hot reload
+tool/run-android.sh                    # start one frontend; run-{linux,macos,ios,windows} too
+tool/host-auto.sh                      # build everything this host can
+tool/target-linux.sh                   # one target; --debug default, --release opt-in
+```
+
+`flutter build` resolves `lib/main.dart` against the working directory, so it only works from `app/`, never the workspace root. The `tool/` scripts handle that themselves — see `tool/README.md`.
+
+The main screens exist as of 2026-08-14: an adaptive shell (`app/lib/shell/` — bottom tab bar under 900px, 220px rail above) hosting Timer (`app/lib/timer/`, incl. start sheet, task picker and entry editor), Projects (`app/lib/projects/`), Reports (`app/lib/reports/`), and Settings/About (`app/lib/settings/`, still doubling as first run), plus the sync-visibility layer (`app/lib/sync/`: foreign-timer reconciliation, merge snackbar, folder-unreachable dialog). All document access goes through one object — `DocumentSession` (`app/lib/data/document_session.dart`), a ChangeNotifier owning the serialized read-merge-write commit queue; screens never touch `DocumentRepository` directly. `app/lib/theme/` mirrors the Penpot token library; keep the two in step (`tokens.dart` is deliberately hand-aligned — never run `dart format` over it). Penpot page `09 · Screens & Flow` (added 2026-08-13) mocks every screen and the navigation between them — 24 screens in seven groups, drawn from the sheets-01–08 tokens and components; build against it rather than inventing UI. One deliberate motif, implemented in `app/lib/shell/watermark.dart`: every screen carries the logo as a barely-perceptible watermark (~5% opacity) that is anchored to the viewport — content scrolls over it, the mark never moves. Not built yet from the mockups: the beside-the-file backups toggle (the behaviour doesn't exist, so no dead switch), a "Source code" About row (no public URL), device names on foreign timers (needs a document field), and the desktop-only side panels on G1/G2.
+
+`DocumentStore` (DESIGN.md §4.1) is implemented on all five platforms — see [Where the file lives](#where-the-file-lives).
+
+## Languages
+
+Ships **hu, en, es, it, de**, and the set has to stay open — adding a language must never mean touching code.
+
+It doesn't. Drop `app/lib/l10n/app_<code>.arb` next to its siblings, add the code to `shipped` in `app/test/l10n_test.dart`, and run `flutter pub get`. Nothing enumerates the locales: `l10n.yaml` points gen-l10n at the directory and it discovers what is there. `app_en.arb` is the template — every other file must carry exactly its keys, which `l10n_test.dart` enforces rather than trusting.
+
+Two traps the tests exist to catch:
+
+- **gen-l10n sorts `supportedLocales`, so `de` comes first.** Flutter's stock resolution falls back to `supportedLocales.first`, which would hand German to a Japanese device. `resolveLocale` in `main.dart` pins the fallback to English; do not delete it, and do not assume adding a language leaves it alone.
+- **A locale missing a key silently inherits English.** The generated class hides this, so the test compares the ARB files directly.
+
+Strings live in ARB with a `@key` description for anything a translator could misread. `appTitle` is the brand and stays "Cirrhy" everywhere; `languageName` is each language's name in itself (Magyar, not Hungarian), for the picker a settings screen will need.
+
+**The OS language is the default; the user can override it.** `LocalePreference` (`app/lib/settings/locale_preference.dart`) holds a nullable `Locale`, where null means "follow the system" and is the normal state — there is no "system" sentinel language code to special-case.
+
+It is stored in **platform preferences, not the Cirrhy document**, and that is the load-bearing part. DESIGN.md §3.6 keeps device-scoped state out of last-write-wins merge, using the running timer as the case; a language is the same shape. A Hungarian phone and an English work laptop are both legitimate, and a synced language would flip one device's UI because you changed it on the other. It also keeps the single-file promise about *tracking data* rather than every preference. Do not move it into the document.
+
+A stored language the app no longer ships is ignored rather than honoured, so dropping a translation cannot strand someone in a language with no strings left.
+
+The picker lives on the preferences screen, where it moved off the placeholder once that screen existed. `LocalePreference` did not change in the move, and should not.
+
+Dates, times and durations are the reporting feature's core output and must go through `intl` formatters, never hand-built strings — `1.5 h`, `1,5 óra` and `1,5 Std.` all differ by more than the decimal mark.
+
+## Where the file lives
+
+The user picks a **folder** at first run and can change it later; both are the same screen (DESIGN.md §4.6). The app is gated until a folder is chosen — a default location was considered and dropped, so do not reintroduce one without reading why.
+
+The parts that will bite whoever touches this next:
+
+- **The choice is device-scoped**, stored in platform preferences exactly like the language, and must never move into the document. Here the argument does not even need merge semantics: an iOS bookmark is meaningless on Linux.
+- **Directory scope, not file scope**, decided 2026-08-13. A document-scoped handle cannot write a sibling temp file, so every save would degrade to in-place overwrite. Asking for a folder is what makes the atomic write possible.
+- **The file name is fixed** (`cirrhy.json`, `documentFileName`) and never asked. It is what the adopt rule keys on: a chosen folder that already holds a Cirrhy document is opened and **merged**, not replaced, which is what makes setting up the second device the same flow as the first. `knownDocumentFileNames` is the one place that learns a second name if §5 lands on CBOR.
+- **Relocating is a save, not a settings write.** Point the store at the new handle and read-merge-write does the rest, including the case where the target already holds a document. The old file is left where it is.
+
+Two platform-shaped facts that look like mistakes and are not:
+
+- **macOS is an Apple platform here, not a desktop one.** Flutter's macOS template enables App Sandbox, so a picked path works until the first restart and then stops. macOS uses a security-scoped bookmark like iOS, and the two entitlements files carry the grants that make that work.
+- **Android writes in place.** SAF has no replace-over-existing, so the pre-write backup is not belt-and-braces there, it is the whole recovery story.
+
+Linux and Windows need no native code — a path is a durable handle, and `file_selector` supplies the dialog. The other three go through one channel, `com.lorands.cirrhy/documents`, implemented in `android/.../DocumentFolders.kt`, `ios/Runner/AppDelegate.swift` and `macos/Runner/MainFlutterWindow.swift`. **The two Swift files are near-duplicates on purpose**: sharing one file across the two Xcode targets means hand-editing both project files, which is a worse trade than keeping two short files in step. Backups are plain `dart:io` on all five, because app-private storage is a real path everywhere.
+
+**Linux and the Android emulator are verified.** Android's SAF path ran end to end on an API 36 emulator on 2026-08-14 (pick, adopt, read, write — the first write also caught a `kotlin.Unit`-over-the-channel crash, fixed in `DocumentFolders.kt`). The Swift has never been built. Say so rather than implying otherwise.
+
+## App icons
+
+Every platform's icon is **generated, never hand-edited**:
+
+```sh
+python3 tool/gen_app_icons.py          # needs rsvg-convert + magick
+python3 tool/gen_app_icons.py --recrop # also re-derives the mark from logo-1.svg (needs inkscape)
+```
+
+The source is `assets/logo/cirrhy-mark.svg` — `logo-1.svg` cropped to its drawing bounds. Geometry and colour come from Penpot page `08 · Brand & Logo`, card `App icon`; the script's header records the measurements. Change the design there, then re-run — the same rule as `app/lib/theme/`.
+
+Two things in the script that look like mistakes but are not. The mark sits slightly below centre, because the hands reach up and right. And below ~128px it gets a stroke in its own fill colour, because the artwork's hairlines are ~0.9 units across a 64.6-unit viewBox and antialias into a grey ghost at launcher sizes; above that the boost is zero and the pixels are exactly what the design draws.
+
+Editing `app/linux/runner/resources/` by hand is wasted work for the same reason — the hicolor tree and the `.desktop` file are both generated.
 
 ## What Cirrhy is
 
@@ -13,6 +93,7 @@ A personal time tracker (name = **Circadian Rhythm**), built out of frustration 
 Product constraints that drive nearly every design decision:
 
 - **Single-user, not teams.** No accounts, no sharing, no permissions model. Anything that implies multi-user is out of scope.
+- **Multi-lingual, extensibly.** hu, en, es, it, de at minimum, with adding a sixth costing one file. See [Languages](#languages). No user-visible string is ever a literal in a widget.
 - **All data in a SINGLE FILE.** Sync is the user's problem — they drop the file in Dropbox/Syncthing/whatever. The app must never depend on a specific sync service, and must not assume it owns the file exclusively. See [Storage and merge](#storage-and-merge) — this is the load-bearing decision in the project.
 - **Five targets: iOS, Android, Linux, macOS, Windows.** The chosen stack has to cover mobile and desktop, which rules out most desktop-only or web-only toolkits.
 - **Domain shape:** clients → projects → tasks, with time entries hanging off them. Reporting over an arbitrary timespan with filters and multiple views is a first-class feature, not an afterthought.
@@ -32,7 +113,9 @@ The non-negotiables it establishes, so they are visible without a second file re
 - **File access is an OS-provided file handle. Cirrhy contains no network or cloud-provider code.** WebDAV/SFTP/Dropbox clients were considered and rejected — see DESIGN.md §4 before re-raising.
 - **No SQLite** — its `-wal`/`-shm`/`-journal` sidecars break the single-file promise.
 
-Still **Proposed, not confirmed**: the stack (Flutter, with the merge engine as a pure-Dart package), and JSON vs CBOR. Confirm with the user before scaffolding either.
+Still **Proposed, not confirmed**: JSON vs CBOR. JSON ships today behind a `DocumentCodec` interface, so swapping it does not reach into the merge engine — but it changes the on-disk format, so decide before real data exists.
+
+Two engine invariants that tests enforce and any change must preserve: the merge is **commutative** (`merge(a, b) == merge(b, a)`, ties included) and **idempotent**. Without both, the result depends on which side was passed first.
 
 ## License and naming
 
@@ -47,5 +130,5 @@ Apache 2.0; identity is rooted at `com.lorands.cirrhy`. Full detail in `DESIGN.m
 
 - Linux Manjaro is the primary dev machine; a MacBook Pro is also available (needed for iOS builds).
 - Containers via **podman**, not docker. `docker` commands generally work as `podman` equivalents, but write scripts against podman.
-- **nix** and **devbox** are both in use — prefer declaring toolchain deps there over ad-hoc system installs.
+- Flutter is installed system-wide. **devbox was tried and dropped** (2026-08-13) — it earned nothing here, and DESIGN.md §6 already notes Flutter pins badly under nix/devbox because the SDK self-updates and pulls prebuilt engine binaries. Do not reintroduce a toolchain manager without a concrete reason.
 - Penpot (design/mockups) with MCP is self-hosted at http://192.168.50.138:31027/ — check it for design intent before inventing UI.

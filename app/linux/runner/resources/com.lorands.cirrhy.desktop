@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Cirrhy
+GenericName=Time Tracker
+Comment=A single-file personal time tracker
+Exec=cirrhy %f
+Icon=com.lorands.cirrhy
+Terminal=false
+Categories=Office;ProjectManagement;Utility;
+Keywords=time;tracking;timer;timesheet;
+StartupWMClass=com.lorands.cirrhy

@@ -258,9 +258,15 @@ class _IdleCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  formatTimer(Duration.zero, l10n.localeName),
-                  style: Type.timer.copyWith(color: colors.textMuted),
+                // Scales down rather than wraps: 48px digits next to the
+                // button run out of room on a 360dp-wide phone.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    formatTimer(Duration.zero, l10n.localeName),
+                    style: Type.timer.copyWith(color: colors.textMuted),
+                  ),
                 ),
               ),
               FilledButton.icon(
@@ -390,9 +396,14 @@ class _RunningCardState extends State<_RunningCard> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  formatTimer(elapsed, l10n.localeName),
-                  style: Type.timer.copyWith(color: colors.textPrimary),
+                // Same guard as the idle card: shrink, never wrap.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    formatTimer(elapsed, l10n.localeName),
+                    style: Type.timer.copyWith(color: colors.textPrimary),
+                  ),
                 ),
               ),
               _StopButton(onPressed: widget.onStop),

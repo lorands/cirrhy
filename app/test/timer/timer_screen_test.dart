@@ -133,6 +133,31 @@ void main() {
       expect(find.byKey(const Key('timerStopButton')), findsOneWidget);
     });
 
+    testWidgets('the timer readout never wraps on a 360dp-wide phone', (
+      tester,
+    ) async {
+      addTearDown(tester.view.reset);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(360, 760); // Mate 10 Pro width.
+
+      final session = await openSession(FakeDocumentDirectory());
+      addTearDown(session.dispose);
+      await pumpTimer(tester, session: session);
+
+      // A wrapped readout doubles the text's height; single-line 48px digits
+      // stay around 50. The idle card broke first in the field — its Start
+      // button leaves the digits the least room.
+      final singleLine = lessThan(60.0);
+      expect(tester.getSize(find.text('00:00:00')).height, singleLine);
+
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+      await session.idle;
+      await tester.pumpAndSettle();
+
+      expect(tester.getSize(find.text('00:00:00')).height, singleLine);
+    });
+
     testWidgets('stopping the timer logs it as an entry in the list', (
       tester,
     ) async {

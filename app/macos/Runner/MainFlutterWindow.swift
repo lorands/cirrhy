@@ -221,7 +221,10 @@ final class DocumentFolders: NSObject {
     DispatchQueue.global(qos: .userInitiated).async {
       do {
         let value = try work()
-        DispatchQueue.main.async { result(value) }
+        // Void marks a void method (writeDocument); the standard codec
+        // cannot encode the empty tuple, so answer nil.
+        let reply = value is Void ? nil : value
+        DispatchQueue.main.async { result(reply) }
       } catch let error as Unavailable {
         DispatchQueue.main.async {
           result(FlutterError(code: Self.unavailable, message: error.message, details: nil))

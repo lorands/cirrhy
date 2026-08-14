@@ -258,7 +258,9 @@ class DocumentFolders(private val activity: Activity) :
             val outcome = runCatching(work)
             activity.runOnUiThread {
                 outcome
-                    .onSuccess { result.success(it) }
+                    // Unit marks a void method (writeDocument); the standard
+                    // codec cannot encode kotlin.Unit, so answer null.
+                    .onSuccess { result.success(if (it === Unit) null else it) }
                     .onFailure { error ->
                         when (error) {
                             is Unavailable ->

@@ -160,7 +160,9 @@ boot_emulator() {
         '$0 ~ ("• " p "$") {print $1; exit}')"
   [[ -n "$avd" ]] || return 1
 
-  say "no $platform device attached — booting $avd"
+  # To stderr: this runs inside resolve_mobile_device's command substitution,
+  # and anything on stdout here would be captured into the device id.
+  say "no $platform device attached — booting $avd" >&2
   flutter emulators --launch "$avd" >/dev/null 2>&1 || return 1
 
   while (( waited < 180 )); do

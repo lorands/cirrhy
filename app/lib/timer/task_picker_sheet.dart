@@ -22,14 +22,20 @@ import '../theme/theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/entity_chip.dart';
 
-/// What the task picker (B4) hands back to whatever opened it: a task, with
-/// the project it implies. The picker only ever returns tasks — never a bare
-/// project — so [projectId] simply mirrors the chosen task's own project,
-/// which may itself be null (the "no project" bucket).
+/// What the task picker (B4) hands back to whatever opened it: a task, a
+/// bare project, or neither (both null never actually happens — the sheet
+/// pops with a null [TaskChoice] instead, for "dismissed without choosing").
+///
+/// A bare project is a real choice, not a lesser one: the domain allows a
+/// [TimeEntry] or [RunningTimer] with a project and no task, so picking a
+/// project header directly — before it has any tasks, or instead of one of
+/// them — must produce a [TaskChoice] too. [projectId] is the task's own
+/// project when [taskId] is set, or the chosen project directly when it
+/// isn't.
 class TaskChoice {
-  const TaskChoice({required this.taskId, this.projectId});
+  const TaskChoice({this.taskId, this.projectId});
 
-  final String taskId;
+  final String? taskId;
   final String? projectId;
 }
 
@@ -74,7 +80,7 @@ class _TaskPickerSheetState extends State<_TaskPickerSheet> {
     super.dispose();
   }
 
-  void _choose(String taskId, String? projectId) => Navigator.of(
+  void _choose(String? taskId, String? projectId) => Navigator.of(
     context,
   ).pop(TaskChoice(taskId: taskId, projectId: projectId));
 
@@ -205,7 +211,7 @@ class _RecentTasksSection extends StatelessWidget {
 
   final DocumentSession session;
   final String query;
-  final void Function(String taskId, String? projectId) onChoose;
+  final void Function(String? taskId, String? projectId) onChoose;
 
   @override
   Widget build(BuildContext context) {
@@ -260,7 +266,7 @@ class _AllSection extends StatelessWidget {
 
   final CirrhyDocument document;
   final String query;
-  final void Function(String taskId, String? projectId) onChoose;
+  final void Function(String? taskId, String? projectId) onChoose;
 
   @override
   Widget build(BuildContext context) {
@@ -288,6 +294,10 @@ class _AllSection extends StatelessWidget {
           _ProjectHeader(
             name: project.name,
             color: parseProjectColor(project.color) ?? colors.brand,
+            // A project is a valid choice on its own — TimeEntry/RunningTimer
+            // both allow a project with no task — so the header itself must
+            // be tappable, not just the tasks listed under it.
+            onTap: () => onChoose(null, project.id),
           ),
         );
         for (final task in tasks) {
@@ -389,18 +399,24 @@ class _AllSection extends StatelessWidget {
   }
 }
 
+/// A project row in the "All" hierarchy. Tappable whenever [onTap] is given —
+/// which is every real project (choosing it directly, with no task) — and
+/// left inert for the synthetic "No project" bucket, which isn't an entity
+/// and has nothing of its own to choose.
 class _ProjectHeader extends StatelessWidget {
-  const _ProjectHeader({required this.name, required this.color});
+  const _ProjectHeader({required this.name, required this.color, this.onTap});
 
   final String name;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = CirrhyTheme.of(context);
     final text = Theme.of(context).textTheme;
+    final tappable = onTap != null;
 
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.only(
         left: Space.x4,
         top: Space.x2,
@@ -414,12 +430,24 @@ class _ProjectHeader extends StatelessWidget {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: Space.x2),
-          Text(
-            name,
-            style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+          Expanded(
+            child: Text(
+              name,
+              style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+            ),
           ),
+          if (tappable)
+            Icon(Icons.chevron_right, size: 18, color: colors.textMuted),
         ],
       ),
+    );
+
+    if (!tappable) return row;
+    // Same reason as _TaskListRow: this can render without a Scaffold
+    // ancestor to supply Material for the InkWell's ripple.
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(onTap: onTap, child: row),
     );
   }
 }

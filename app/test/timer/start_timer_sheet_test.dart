@@ -229,6 +229,53 @@ void main() {
       },
     );
 
+    testWidgets(
+      'choosing a bare project (no task) through the picker starts a timer '
+      'with the project set and no task',
+      (tester) async {
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await session.put(Client(id: 'acme', modified: now, name: 'Acme Corp'));
+        await session.put(
+          Project(
+            id: 'p1',
+            modified: now,
+            name: 'Website',
+            clientId: 'acme',
+            locationChanged: now,
+            color: '#3B82F6',
+          ),
+        );
+        // Deliberately no tasks under p1 — the natural first-run path the
+        // bug was filed against.
+
+        await pumpTimer(tester, session);
+        await tester.tap(find.text('What are you working on?'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('startTimerSheetTaskSelector')));
+        await tester.pumpAndSettle();
+        expect(find.text('Choose task'), findsOneWidget);
+
+        await tester.tap(find.text('Website'));
+        await tester.pumpAndSettle();
+
+        // Back on the start-timer sheet, the selector shows the path with no
+        // trailing task segment.
+        expect(find.text('Acme Corp › Website'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('startTimerSheetStart')));
+        await tester.pump();
+        await session.idle;
+        await tester.pumpAndSettle();
+
+        final started = session.myTimer;
+        expect(started, isNotNull);
+        expect(started!.projectId, 'p1');
+        expect(started.taskId, isNull);
+      },
+    );
+
     testWidgets('the sheet title renders in hu', (tester) async {
       final session = await openSession(FakeDocumentDirectory());
       addTearDown(session.dispose);

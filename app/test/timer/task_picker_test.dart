@@ -300,6 +300,37 @@ void main() {
       },
     );
 
+    testWidgets(
+      'a project with no tasks yet is itself a valid, tappable choice',
+      (tester) async {
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await session.put(Client(id: 'acme', modified: now, name: 'Acme Corp'));
+        await session.put(
+          Project(
+            id: 'p1',
+            modified: now,
+            name: 'Website',
+            clientId: 'acme',
+            locationChanged: now,
+          ),
+        );
+        // Deliberately no tasks under p1 — a client and a project created in
+        // the Projects tab, but no task yet: the natural first-run path the
+        // bug was filed against.
+
+        await pumpHarness(tester, session);
+        expect(find.text('Website'), findsOneWidget);
+
+        await tester.tap(find.text('Website'));
+        await tester.pumpAndSettle();
+
+        expect(result, isNotNull);
+        expect(result!.projectId, 'p1');
+        expect(result!.taskId, isNull);
+      },
+    );
+
     testWidgets('the sheet title renders in hu', (tester) async {
       final session = await openSession(FakeDocumentDirectory());
       addTearDown(session.dispose);

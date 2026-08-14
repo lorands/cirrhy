@@ -321,6 +321,7 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
             _TaskField(
               session: widget.session,
               taskId: _taskId,
+              projectId: _projectId,
               onTap: _pickTask,
             ),
             const SizedBox(height: Space.x5),
@@ -464,11 +465,17 @@ class _TaskField extends StatelessWidget {
   const _TaskField({
     required this.session,
     required this.taskId,
+    required this.projectId,
     required this.onTap,
   });
 
   final DocumentSession session;
   final String? taskId;
+
+  /// The entry's own project — the source of truth when [taskId] is null,
+  /// which is the valid "project chosen, no task" shape (DESIGN.md allows a
+  /// [TimeEntry] with a project and no task).
+  final String? projectId;
   final VoidCallback onTap;
 
   @override
@@ -477,20 +484,20 @@ class _TaskField extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final text = Theme.of(context).textTheme;
     final task = taskId == null ? null : session.taskById(taskId);
+    final project = session.projectById(task?.projectId ?? projectId);
+    final client = session.clientById(project?.clientId);
 
     Widget content;
-    if (task == null) {
+    if (task == null && project == null) {
       content = Text(
         l10n.timerSelectTask,
         style: text.bodyLarge?.copyWith(color: colors.textMuted),
       );
     } else {
-      final project = session.projectById(task.projectId);
-      final client = session.clientById(project?.clientId);
       final label = [
         if (client != null) client.name,
         if (project != null) project.name,
-        task.name,
+        if (task != null) task.name,
       ].join(' › ');
       content = EntityChip(
         label: label,

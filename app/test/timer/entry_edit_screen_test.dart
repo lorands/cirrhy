@@ -226,6 +226,73 @@ void main() {
     );
 
     testWidgets(
+      'choosing a bare project through the picker clears a previously '
+      'chosen task, and Save persists taskId null',
+      (tester) async {
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        await session.put(Client(id: 'acme', modified: now, name: 'Acme'));
+        await session.put(
+          Project(
+            id: 'p1',
+            modified: now,
+            name: 'Website',
+            clientId: 'acme',
+            locationChanged: now,
+          ),
+        );
+        await session.put(
+          Task(
+            id: 't1',
+            modified: now,
+            name: 'Landing page',
+            projectId: 'p1',
+            locationChanged: now,
+          ),
+        );
+        // A second project, deliberately with no tasks of its own yet — the
+        // natural first-run path the bug was filed against.
+        await session.put(
+          Project(
+            id: 'p2',
+            modified: now,
+            name: 'Ops',
+            clientId: 'acme',
+            locationChanged: now,
+          ),
+        );
+        final original = entry(
+          projectId: 'p1',
+          taskId: 't1',
+          locationChanged: now.subtract(const Duration(days: 1)),
+        );
+        await session.put(original);
+
+        await pumpEditor(tester, session, 'e1');
+        expect(find.text('Acme › Website › Landing page'), findsOneWidget);
+
+        await tester.tap(find.text('Acme › Website › Landing page'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Ops'));
+        await tester.pumpAndSettle();
+
+        // The chip now shows the project path, with no trailing task segment
+        // — the picker returned a bare project, not the old task.
+        expect(find.text('Acme › Ops'), findsOneWidget);
+
+        now = now.add(const Duration(minutes: 1));
+        await tester.tap(find.text('Save'));
+        await tester.pump();
+        await session.idle;
+        await tester.pumpAndSettle();
+
+        final saved = session.document.entries['e1']!;
+        expect(saved.projectId, 'p2');
+        expect(saved.taskId, isNull);
+      },
+    );
+
+    testWidgets(
       'changing the date moves both start and stop, preserving clock times',
       (tester) async {
         final session = await openSession(FakeDocumentDirectory());

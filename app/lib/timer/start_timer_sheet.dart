@@ -194,21 +194,26 @@ class _TaskSelectorRow extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     final chosen = choice;
-    final task = chosen == null ? null : session.taskById(chosen.taskId);
+    // A choice can be a bare project — taskId null, projectId set — so the
+    // project must be looked up from the choice itself, not only derived
+    // from a task that may not exist.
+    final task = chosen?.taskId == null
+        ? null
+        : session.taskById(chosen!.taskId);
+    final project = session.projectById(task?.projectId ?? chosen?.projectId);
+    final client = session.clientById(project?.clientId);
 
     Widget content;
-    if (chosen == null || task == null) {
+    if (chosen == null || (task == null && project == null)) {
       content = Text(
         l10n.timerSelectTask,
         style: text.bodyLarge?.copyWith(color: colors.textMuted),
       );
     } else {
-      final project = session.projectById(task.projectId);
-      final client = session.clientById(project?.clientId);
       final label = [
         if (client != null) client.name,
         if (project != null) project.name,
-        task.name,
+        if (task != null) task.name,
       ].join(' › ');
       content = EntityChip(
         label: label,

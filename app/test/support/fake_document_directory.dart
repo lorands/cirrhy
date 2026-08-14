@@ -54,9 +54,47 @@ final class FakeDocumentDirectory implements DocumentDirectory {
   Future<List<String>> existingDocuments(DocumentLocation location) async =>
       existing;
 
+  /// One in-memory store per handle, shared across calls, so a "second
+  /// device" is just a second repository over the same location.
+  final Map<String, MemoryDocumentStore> stores = {};
+
   @override
-  DocumentStore storeAt(DocumentLocation location) =>
-      throw UnimplementedError('no test needs to read through the fake yet');
+  MemoryDocumentStore storeAt(DocumentLocation location) =>
+      stores.putIfAbsent(location.handle, () => MemoryDocumentStore(location));
 
   static const _nowhere = DocumentLocation(handle: '?', label: '?');
+}
+
+/// A [DocumentStore] over a byte buffer, for tests that need storage without
+/// a filesystem — its futures settle on the microtask queue, so it works
+/// inside `testWidgets`' fake-async zone where real file IO would hang.
+final class MemoryDocumentStore implements DocumentStore {
+  MemoryDocumentStore(this.location);
+
+  final DocumentLocation location;
+
+  /// Null means the file does not exist yet.
+  List<int>? bytes;
+
+  /// When true, reads and writes throw [DocumentLocationUnavailable] — the
+  /// revoked-permission / stale-bookmark case of §4.4.
+  bool unavailable = false;
+
+  int reads = 0;
+  int writes = 0;
+
+  @override
+  Future<StoredBytes> read() async {
+    if (unavailable) throw DocumentLocationUnavailable(location);
+    reads++;
+    final current = bytes;
+    return current == null ? StoredBytes.empty : StoredBytes.of(current);
+  }
+
+  @override
+  Future<void> write(List<int> data) async {
+    if (unavailable) throw DocumentLocationUnavailable(location);
+    writes++;
+    bytes = List.of(data);
+  }
 }

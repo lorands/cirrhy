@@ -99,7 +99,7 @@ void main() {
   test('no locale is given an empty or untranslated body', () async {
     for (final locale in AppLocalizations.supportedLocales) {
       final l10n = await AppLocalizations.delegate.load(locale);
-      expect(l10n.placeholderBody, isNotEmpty);
+      expect(l10n.timerIdleHint, isNotEmpty);
       expect(l10n.languageName, isNotEmpty);
       expect(
         l10n.appTitle,
@@ -131,20 +131,17 @@ void main() {
 
   testWidgets('the real app picks up the device locale', (tester) async {
     // The end-to-end check: delegates, resolution and rendering together.
-    // Loading an ARB directly would pass even with MaterialApp unwired.
+    // Loading an ARB directly would pass even with MaterialApp unwired. The
+    // idle timer card's hint text is the proof: it renders unconditionally,
+    // with no session and no folder chosen, which is exactly the state
+    // `const CirrhyApp()` boots into here.
     addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
 
     for (final (locale, expected) in [
-      (
-        const Locale('hu'),
-        'Még nincs felület — előbb az összefésülő motor készül el.',
-      ),
-      (
-        const Locale('de'),
-        'Noch keine Oberfläche — zuerst entsteht die Merge-Engine.',
-      ),
+      (const Locale('hu'), 'Min dolgozol?'),
+      (const Locale('de'), 'Woran arbeitest du?'),
       // Unsupported: must land on English rather than alphabetically-first German.
-      (const Locale('ja'), 'No UI yet — the merge engine comes first.'),
+      (const Locale('ja'), 'What are you working on?'),
     ]) {
       tester.binding.platformDispatcher.localesTestValue = [locale];
       await tester.pumpWidget(const CirrhyApp());

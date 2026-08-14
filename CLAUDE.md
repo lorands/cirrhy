@@ -14,7 +14,7 @@ Built against Flutter 3.44.8 / Dart 3.12.2. Run everything from the repo root:
 ```sh
 flutter pub get                        # resolves the whole workspace; also runs gen-l10n
 tool/check.sh                          # analyze + report formatting
-tool/test.sh                           # engine (33 tests) then app (74)
+tool/test.sh                           # engine (33 tests) then app (263)
 
 tool/dev.sh                            # desktop + mobile side by side, one hot reload
 tool/run-android.sh                    # start one frontend; run-{linux,macos,ios,windows} too
@@ -24,7 +24,7 @@ tool/target-linux.sh                   # one target; --debug default, --release 
 
 `flutter build` resolves `lib/main.dart` against the working directory, so it only works from `app/`, never the workspace root. The `tool/` scripts handle that themselves — see `tool/README.md`.
 
-The only screens that exist are **first run and preferences**, which are the same screen — DESIGN.md §9 still puts the engine before the product UI, and the placeholder behind them is still a placeholder. `app/lib/theme/` mirrors the Penpot token library; keep the two in step. Penpot has no screen mockups yet, only the token and component sheets, so anything beyond those two screens needs a design before it needs code.
+The main screens exist as of 2026-08-14: an adaptive shell (`app/lib/shell/` — bottom tab bar under 900px, 220px rail above) hosting Timer (`app/lib/timer/`, incl. start sheet, task picker and entry editor), Projects (`app/lib/projects/`), Reports (`app/lib/reports/`), and Settings/About (`app/lib/settings/`, still doubling as first run), plus the sync-visibility layer (`app/lib/sync/`: foreign-timer reconciliation, merge snackbar, folder-unreachable dialog). All document access goes through one object — `DocumentSession` (`app/lib/data/document_session.dart`), a ChangeNotifier owning the serialized read-merge-write commit queue; screens never touch `DocumentRepository` directly. `app/lib/theme/` mirrors the Penpot token library; keep the two in step (`tokens.dart` is deliberately hand-aligned — never run `dart format` over it). Penpot page `09 · Screens & Flow` (added 2026-08-13) mocks every screen and the navigation between them — 24 screens in seven groups, drawn from the sheets-01–08 tokens and components; build against it rather than inventing UI. One deliberate motif, implemented in `app/lib/shell/watermark.dart`: every screen carries the logo as a barely-perceptible watermark (~5% opacity) that is anchored to the viewport — content scrolls over it, the mark never moves. Not built yet from the mockups: the beside-the-file backups toggle (the behaviour doesn't exist, so no dead switch), a "Source code" About row (no public URL), device names on foreign timers (needs a document field), and the desktop-only side panels on G1/G2.
 
 `DocumentStore` (DESIGN.md §4.1) is implemented on all five platforms — see [Where the file lives](#where-the-file-lives).
 

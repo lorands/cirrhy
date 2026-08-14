@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'data/document_session.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'settings/document_location_preference.dart';
 import 'settings/locale_preference.dart';
 import 'settings/settings_screen.dart';
+import 'settings/theme_preference.dart';
+import 'shell/app_shell.dart';
+import 'storage/document_backups.dart';
 import 'storage/document_directory.dart';
 import 'theme/theme.dart';
-import 'theme/tokens.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,11 +37,13 @@ Future<void> main() async {
   // starting a security-scoped access — and that does not belong in front of
   // the first frame. The preferences screen checks when it opens (§4.4).
   final location = await DocumentLocationPreference.load();
+  final theme = await ThemePreference.load();
   runApp(
     CirrhyApp(
       localePreference: locale,
       locationPreference: location,
       directory: DocumentDirectory.forPlatform(),
+      themePreference: theme,
     ),
   );
 }
@@ -47,6 +54,7 @@ class CirrhyApp extends StatelessWidget {
     this.localePreference,
     this.locationPreference,
     this.directory,
+    this.themePreference,
   });
 
   /// Null in tests and until the stored choice has been read; the app then
@@ -59,39 +67,48 @@ class CirrhyApp extends StatelessWidget {
 
   final DocumentDirectory? directory;
 
+  /// Null in tests that do not exercise theming; the app then simply follows
+  /// the system, which is the default anyway — the same shape as
+  /// [localePreference].
+  final ThemePreference? themePreference;
+
   @override
   Widget build(BuildContext context) {
-    final preference = localePreference;
-    if (preference == null) return _app(null);
+    final locale = localePreference;
+    final theme = themePreference;
+    if (locale == null && theme == null) return _app(null, null);
 
-    // Rebuilds MaterialApp when the user switches, so the change is immediate
-    // rather than waiting for a restart.
+    // Rebuilds MaterialApp when the user switches either preference, so the
+    // change is immediate rather than waiting for a restart. Listenable.merge
+    // tolerates the null entry when only one of the two is wired up.
     return ListenableBuilder(
-      listenable: preference,
-      builder: (context, _) => _app(preference),
+      listenable: Listenable.merge([locale, theme]),
+      builder: (context, _) => _app(locale, theme),
     );
   }
 
-  Widget _app(LocalePreference? preference) {
+  Widget _app(LocalePreference? locale, ThemePreference? theme) {
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       debugShowCheckedModeBanner: false,
       theme: cirrhyLightTheme(),
       darkTheme: cirrhyDarkTheme(),
-      // Follows the OS. Both schemes are fully specified, so there is no
-      // "unfinished" side to hide behind a forced default.
-      themeMode: ThemeMode.system,
+      // Follows the OS by default; both schemes are fully specified, so
+      // there is no "unfinished" side to hide behind a forced default. A
+      // stored override, once loaded, takes over from here.
+      themeMode: theme?.mode ?? ThemeMode.system,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       // Null means "follow the OS", which is the default state. When set,
       // Flutter passes it to localeListResolutionCallback as the sole
       // preference, so resolveLocale still guards the fallback.
-      locale: preference?.locale,
+      locale: locale?.locale,
       localeListResolutionCallback: resolveLocale,
       home: _Home(
-        localePreference: preference,
+        localePreference: locale,
         locationPreference: locationPreference,
         directory: directory,
+        themePreference: theme,
       ),
     );
   }
@@ -120,11 +137,17 @@ Locale resolveLocale(List<Locale>? preferred, Iterable<Locale> supported) {
 
 /// First run, or the app proper.
 class _Home extends StatefulWidget {
-  const _Home({this.localePreference, this.locationPreference, this.directory});
+  const _Home({
+    this.localePreference,
+    this.locationPreference,
+    this.directory,
+    this.themePreference,
+  });
 
   final LocalePreference? localePreference;
   final DocumentLocationPreference? locationPreference;
   final DocumentDirectory? directory;
+  final ThemePreference? themePreference;
 
   @override
   State<_Home> createState() => _HomeState();
@@ -137,6 +160,56 @@ class _HomeState extends State<_Home> {
   /// the folder was picked, taking the "will be created" / "will be merged"
   /// confirmation with it before anyone read it.
   late bool _firstRun = widget.locationPreference?.isChosen == false;
+
+  /// The open document, once the async pieces (device id, backups) resolve.
+  ///
+  /// Created even during first run: the session listens to the location
+  /// preference, so the moment the first-run screen's picker lands on a
+  /// folder, the session opens it — no second wiring path for `onContinue`.
+  DocumentSession? _session;
+
+  @override
+  void initState() {
+    super.initState();
+    final location = widget.locationPreference;
+    final directory = widget.directory;
+    if (location != null && directory != null) {
+      unawaited(_startSession(directory, location));
+    }
+  }
+
+  Future<void> _startSession(
+    DocumentDirectory directory,
+    DocumentLocationPreference location,
+  ) async {
+    DocumentBackups? backup;
+    try {
+      backup = await DocumentBackups.openAppPrivate();
+    } on Object {
+      // No app-private storage means no backups, not no app. The repository
+      // already treats a failed snapshot as survivable (§4.3); failing to
+      // even create the folder is the same trade one step earlier.
+    }
+    final session = await DocumentSession.start(
+      directory: directory,
+      locationPreference: location,
+      backup: backup,
+    );
+    if (!mounted) {
+      session.dispose();
+      return;
+    }
+    setState(() => _session = session);
+    // A no-op until a folder is chosen; on first run the session's location
+    // listener takes over from here.
+    await session.open();
+  }
+
+  @override
+  void dispose() {
+    _session?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,109 +224,19 @@ class _HomeState extends State<_Home> {
           localePreference: locale,
           locationPreference: location,
           directory: directory,
+          themePreference: widget.themePreference,
           firstRun: true,
           onContinue: () => setState(() => _firstRun = false),
         ),
       );
     }
 
-    return _Placeholder(
+    return AppShell(
       localePreference: locale,
       locationPreference: location,
       directory: directory,
-    );
-  }
-}
-
-/// Deliberately empty.
-///
-/// DESIGN.md §9: the storage engine is built first, standalone and headless,
-/// because it is the part that can lose user data. Screens come after it, on
-/// top of the design system in the Penpot file. What is here now is the way in
-/// to preferences and nothing else.
-class _Placeholder extends StatelessWidget {
-  const _Placeholder({
-    this.localePreference,
-    this.locationPreference,
-    this.directory,
-  });
-
-  final LocalePreference? localePreference;
-  final DocumentLocationPreference? locationPreference;
-  final DocumentDirectory? directory;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = CirrhyTheme.of(context);
-    final text = Theme.of(context).textTheme;
-    final l10n = AppLocalizations.of(context);
-    final locale = localePreference;
-    final location = locationPreference;
-    final directory = this.directory;
-    final canOpenSettings =
-        locale != null && location != null && directory != null;
-
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          if (canOpenSettings)
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: l10n.settingsTitle,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => SettingsScreen(
-                    localePreference: locale,
-                    locationPreference: location,
-                    directory: directory,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(Space.x8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.appTitle, style: text.headlineLarge),
-              const SizedBox(height: Space.x2),
-              Text(
-                l10n.placeholderBody,
-                style: text.bodyMedium?.copyWith(color: colors.textSecondary),
-              ),
-              const SizedBox(height: Space.x6),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Space.x3,
-                  vertical: Space.x2,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.brandSubtle,
-                  borderRadius: BorderRadius.circular(Radii.full),
-                ),
-                child: Text(
-                  'package:cirrhy_merge',
-                  style: text.labelSmall?.copyWith(color: colors.brand),
-                ),
-              ),
-              if (location != null) ...[
-                const SizedBox(height: Space.x6),
-                ListenableBuilder(
-                  listenable: location,
-                  builder: (context, _) => Text(
-                    location.location?.label ?? l10n.storageNotChosen,
-                    style: text.labelSmall?.copyWith(color: colors.textMuted),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      themePreference: widget.themePreference,
+      session: _session,
     );
   }
 }

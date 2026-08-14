@@ -29,8 +29,9 @@ const supported = AppLocalizations.supportedLocales;
 /// lives.
 ///
 /// It moved there off the placeholder screen when the preferences screen was
-/// built (DESIGN.md §4.6); the [LocalePreference] behind it did not change.
-/// The folder is pre-chosen so the app does not open on first run.
+/// built (DESIGN.md §4.6), and lives on the Settings tab of the app shell now;
+/// the [LocalePreference] behind it did not change either time. The folder is
+/// pre-chosen so the app does not open on first run.
 Future<void> pumpAppAtPreferences(
   WidgetTester tester,
   LocalePreference locale,
@@ -48,7 +49,7 @@ Future<void> pumpAppAtPreferences(
     ),
   );
   await tester.pumpAndSettle();
-  await tester.tap(find.byIcon(Icons.settings_outlined));
+  await tester.tap(find.byIcon(Icons.tune));
   await tester.pumpAndSettle();
 }
 
@@ -119,10 +120,7 @@ void main() {
       await tester.pumpWidget(CirrhyApp(localePreference: pref));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Még nincs felület — előbb az összefésülő motor készül el.'),
-        findsOneWidget,
-      );
+      expect(find.text('Min dolgozol?'), findsOneWidget);
     });
 
     testWidgets('no override means the system language', (tester) async {
@@ -134,12 +132,7 @@ void main() {
       await tester.pumpWidget(CirrhyApp(localePreference: pref));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text(
-          'Nessuna interfaccia per ora: prima viene il motore di unione.',
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('A cosa stai lavorando?'), findsOneWidget);
     });
 
     testWidgets('switching redraws immediately, without a restart', (
@@ -151,19 +144,11 @@ void main() {
       final pref = await LocalePreference.load(supported);
       await tester.pumpWidget(CirrhyApp(localePreference: pref));
       await tester.pumpAndSettle();
-      expect(
-        find.text('No UI yet — the merge engine comes first.'),
-        findsOneWidget,
-      );
+      expect(find.text('What are you working on?'), findsOneWidget);
 
       await pref.set(const Locale('es'));
       await tester.pumpAndSettle();
-      expect(
-        find.text(
-          'Todavía no hay interfaz: primero se construye el motor de fusión.',
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('¿En qué estás trabajando?'), findsOneWidget);
     });
 
     testWidgets('the picker lists every language in its own name', (
@@ -205,8 +190,15 @@ void main() {
       expect(pref.locale, const Locale('hu'));
       // The preferences screen itself is now in Hungarian, which is the same
       // property the placeholder used to demonstrate: the switch redraws the
-      // whole app, not just the screen that owns the picker.
-      expect(find.text('Beállítások'), findsOneWidget);
+      // whole app, not just the screen that owns the picker. Scoped to the
+      // AppBar because the Settings tab label is "Beállítások" too.
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Beállítások'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

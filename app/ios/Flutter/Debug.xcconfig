@@ -1,1 +1,6 @@
 #include "Generated.xcconfig"
+
+// Signing, which is per-machine and untracked — see tool/ios-signing.sh.
+// The optional include is the point: a clone with no Apple ID still builds
+// for the simulator, and nobody's team ID lands in the repository.
+#include? "Signing.xcconfig"

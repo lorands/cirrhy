@@ -158,15 +158,15 @@ The user says where the document lives. That question is asked at first run and 
 
 ---
 
-## 5. File format — **Proposed**
+## 5. File format — **Decided** (2026-08-14): JSON
 
-A whole-document format — JSON or CBOR, optionally compressed — loaded entirely into memory.
+A whole-document format loaded entirely into memory, encoded as JSON (`JsonDocumentCodec`), uncompressed.
 
 **Avoid SQLite**, despite it being nominally a single file. WAL mode adds `-wal` and `-shm` sidecars and rollback journals add `-journal`; these break the single-file promise and corrupt the database when a sync client copies the main file without them. Whole-document also matches the merge model, since merging two SQLite files is manual work.
 
 Size is not a concern: a heavy user generates a few thousand entries a year.
 
-**Open:** JSON (diffable, debuggable, git-friendly) vs CBOR (compact, faster). JSON is probably the better default for an OSS project where users may want to inspect or repair their own data.
+**JSON over CBOR**, settled while deciding §10. Size and speed were already immaterial at this scale; what settled it is that §10 makes the file format the product's one public seam: import is defined as "something that has never seen this codebase produces a valid document from a written spec", and §5 always valued users being able to inspect and repair their own data. Both of those are sentences about JSON. CBOR would put a binary encoder between every importing agent — and every hand repair — and the file, to save kilobytes nobody is short of. The `DocumentCodec` interface and `knownDocumentFileNames` stay: a future format change remains *possible*, it is just no longer *pending*.
 
 ---
 
@@ -219,11 +219,11 @@ Ecosystems that don't use reverse-DNS aren't bound: a Rust crate is `cirrhy`, a 
 ## 8. Open questions
 
 1. ~~Confirm the stack (§6).~~ **Resolved 2026-08-13: Flutter.**
-2. **JSON vs CBOR** (§5). JSON is implemented behind a `DocumentCodec` interface, so switching does not reach into the merge engine. Decide before the format ships to a real user, since it changes the on-disk file.
+2. ~~**JSON vs CBOR** (§5).~~ **Resolved 2026-08-14: JSON**, settled by §10 making the file format the import seam — a spec an outside agent writes against wants a text format, and simplicity won. The `DocumentCodec` interface stays as the escape hatch.
 3. **Whether to encrypt the file.** KDBX is encrypted because it holds secrets; time-tracking data may not warrant it. Encryption would complicate inspection and repair. Probably no, but decide explicitly.
 4. **Timezone and DST handling** — not yet considered, and material for a time tracker. Storing UTC instants plus the originating timezone is the likely answer; entries spanning a DST transition are the test case.
 5. ~~**Directory scope vs file scope** (§4.2).~~ **Resolved 2026-08-13: directory scope**, forced by the location picker (§4.6), which is the thing that asks the OS for one or the other. Atomic writes and beside-the-file backups both need a sibling temp.
-6. **Import from other trackers** (§10) — the shape of the seam, not whether to have one.
+6. ~~**Import from other trackers** (§10).~~ **Resolved 2026-08-14** — see §10: a one-time, agent-driven migration through the file format itself, made safe by provenance fields and batch rollback rather than by review or engine-level dedup. The remaining work there is the spec (JSON Schema + agent-facing Markdown) and the two record fields, not a decision.
 
 ## 9. First thing to build — **done** (2026-08-13)
 
@@ -241,21 +241,26 @@ Still to do: an age limit on tombstones (currently only pruned when a record out
 
 ---
 
-## 10. Import from other trackers — **Open** (raised 2026-08-13)
+## 10. Import from other trackers — **Decided** (2026-08-14; raised 2026-08-13)
 
 Cirrhy exists because Clockify/Toggl/Kimai were unsatisfying, so its users arrive with history in one of them. There has to be a way in.
 
-**Cirrhy should not carry per-vendor importers.** Each one is a CSV/JSON dialect that changes without notice, for a single-user app that will see each migration once. Instead, expose one solid, well-documented way to get records in, and let an agent — Claude or equivalent — do the vendor-specific mapping from whatever the source exports. That is the kind of one-off, schema-guessing work an agent is genuinely good at, and it keeps five vendor parsers out of a codebase whose merge engine is the thing that must stay trustworthy.
+**Cirrhy carries no per-vendor importers — and no import code at all: the seam is the file format itself.** Each vendor importer is a CSV/JSON dialect that changes without notice, for a single-user app that sees each migration once. Instead, an agent — Claude or equivalent — reads the source's export, makes the vendor-specific mapping judgements, and writes valid Cirrhy records into the live document; the ordinary read-merge-write picks them up exactly as it would another device's edits. That is one-off schema-guessing work an agent is genuinely good at, and it keeps vendor parsers out of a codebase whose merge engine is the thing that must stay trustworthy. The **embedded MCP server** alternative is rejected: a server inside an offline single-user app, against §4's no-network rule, doing a job the format already does.
 
-What that costs us is documentation quality: the seam only works if the format and the entity model are specified well enough for something that has never seen the code to produce a valid document. That spec is the deliverable, more than any code.
+The rest was settled in a design grilling on 2026-08-14. The load-bearing realisation: **one-time means one successful migration, not one attempt** — first mappings are often wrong, so the design must survive a botched run. Everything below favors *recovery* over *prevention*:
 
-An **embedded MCP server** was the other idea, and is probably overkill: it means shipping a server inside an offline single-user app, and it sits awkwardly against §4's rule that Cirrhy contains no network code. A documented file format plus the existing read-merge-write path may already be the whole feature — import becomes "produce a valid Cirrhy document, then merge it", which is a code path we already have and already test.
+- **Import is a one-time migration, not a recurring sync.** Periodic re-import was considered and dropped; nobody migrates monthly, and designing for it (source-derived record IDs, source-derived `modified` stamps, so a re-run corrects instead of duplicates or clobbers) buys nothing the real use case needs.
+- **Two provenance fields, on every record type, populated only by import:** `importSource`, a free string naming the origin (e.g. `kimai - truenas`), and `externalId`, the source's own identifier (compound if the source needs it). They exist on all record types deliberately — the mapping error that actually hurts is the client/project *hierarchy*, so the tree must be as traceable as the entries. **Neither field is a merge key.** The record `id` stays a fresh UUID, merge stays a union over UUIDs, and the engine never learns these fields mean anything: §3's invariants are untouched, and no uniqueness validation exists or should.
+- **Retry protocol: tombstone the batch, re-import fresh.** Delete every record whose `importSource` matches, then run the corrected import. File-level undo (restoring a pre-import backup) is impossible by construction the moment the bad import has merged onto a second device — union-over-UUIDs merges it straight back — so rollback has to be record-level, and the tombstones are also what stop other devices resurrecting attempt one (§3.3). The agent performs the rollback through the format; zero app surface. Two caveats that belong in the spec: rollback takes with it any hand-edits made to imported records (a tombstone kills the record's history too), so verify an import before editing what it brought in; and rollback rides on tombstones, so §9's still-open tombstone age limit bounds how long a rolled-back batch stays dead for a long-offline device.
+- **No review-before-merge.** The agent writes straight into the live file; review is post-hoc, in the app. What is worth reviewing is the dozen-line client/project mapping, never the 3,000 entries, and batch rollback is the undo. A staging step would add surface without adding protection recoverability doesn't already give — for a single user, the same eyes review on every device.
+- **Enforcement is recoverability, not validation.** The agent is *prescribed* — not engine-enforced — to stamp the provenance fields. Prompt compliance would be an unacceptable guard against silent corruption; it is an acceptable guard when the failure is visible and the recovery is cheap.
 
-Open, and to settle before it is built:
+**The deliverable is the spec, more than any code**: it only works if the format and entity model are specified well enough for something that has never seen this codebase to produce a valid document. Concretely, two artifacts, versioned with `packages/cirrhy_merge` and kept in step with it:
 
-- **Whether the seam is the file format or an API.** If it is the format (§5), import is just `merge`, and §3's commutativity means a bad import can be re-run rather than undone. That is the cheap answer and the one to disprove before considering anything larger.
-- **Re-import must not duplicate.** Records are identified by UUID (§3.1), and a vendor export carries none. Importing the same export twice would mint fresh UUIDs and double every entry. Some stable mapping from the source's own ID to ours has to exist, or import has to be defined as a one-time operation and enforced as one.
-- **Where the mapping lives.** Client/project/task hierarchies differ between vendors; a Toggl project may be a Cirrhy client. That judgement is the agent's job, but the result has to land in something reviewable before it is merged into real data.
+- a **JSON Schema** for the document format, so an importer can machine-validate its output before writing;
+- an **agent-facing Markdown spec** (llms-file style): the entity model (clients → projects → tasks, entries, tombstones, per-device running timers), the field and timestamp rules an importer must respect, the provenance-field rules, and the retry protocol above.
+
+Still to build: the two record fields, the two spec documents.
 
 ---
 

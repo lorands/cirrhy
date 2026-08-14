@@ -113,7 +113,7 @@ The non-negotiables it establishes, so they are visible without a second file re
 - **File access is an OS-provided file handle. Cirrhy contains no network or cloud-provider code.** WebDAV/SFTP/Dropbox clients were considered and rejected — see DESIGN.md §4 before re-raising.
 - **No SQLite** — its `-wal`/`-shm`/`-journal` sidecars break the single-file promise.
 
-Still **Proposed, not confirmed**: JSON vs CBOR. JSON ships today behind a `DocumentCodec` interface, so swapping it does not reach into the merge engine — but it changes the on-disk format, so decide before real data exists.
+The format is **Decided: JSON** (2026-08-14, DESIGN.md §5) — settled when §10 made the file format the import seam. The `DocumentCodec` interface and `knownDocumentFileNames` stay as the escape hatch; a format change is possible, not pending. Import (§10) is likewise **Decided**: a one-time, agent-driven migration written straight into the live file, made safe by two provenance fields on every record (`importSource`, `externalId` — traceability only, never merge keys) and a rollback protocol of "tombstone the batch, re-import". Not built yet: the two fields, a JSON Schema for the document, and the agent-facing Markdown spec — read §10 before starting any of them.
 
 Two engine invariants that tests enforce and any change must preserve: the merge is **commutative** (`merge(a, b) == merge(b, a)`, ties included) and **idempotent**. Without both, the result depends on which side was passed first.
 

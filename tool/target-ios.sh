@@ -17,8 +17,8 @@
 # Builds iOS. macOS host only — it needs Xcode.
 #
 # Builds unsigned by default, which is all you need to prove the project
-# compiles. Pass --codesign once a development team is configured; installing
-# on a physical device requires it.
+# compiles. Pass --codesign once tool/ios-signing.sh has set a development
+# team; installing on a physical device requires it.
 
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
@@ -34,7 +34,7 @@ require_host macos "iOS"
 SIGN_FLAG=(--no-codesign)
 if [[ "$CODESIGN" == "yes" ]]; then
   SIGN_FLAG=()
-  say "signing enabled — needs a development team in Xcode"
+  say "signing enabled — needs a development team, see tool/ios-signing.sh"
 fi
 
 say "flutter build ios --$MODE ${SIGN_FLAG[*]:-}"

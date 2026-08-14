@@ -39,8 +39,8 @@ say()  { printf '%s==>%s %s\n' "$BOLD" "$OFF" "$*"; }
 warn() { printf '%s==>%s %s\n' "$YELLOW" "$OFF" "$*" >&2; }
 die()  { printf '%s==>%s %s\n' "$RED" "$OFF" "$*" >&2; exit 1; }
 
-# Mode defaults to debug: nothing in this repo is signed yet, so --release
-# fails outright on iOS and quietly debug-signs on Android. See tool/README.md.
+# Mode defaults to debug: Android quietly debug-signs, and iOS needs a team
+# before --release means anything — tool/ios-signing.sh. See tool/README.md.
 MODE=debug
 EXTRA_ARGS=()
 
@@ -236,7 +236,7 @@ EOF
     device="$(cut -f1 <<<"$found")"
     printf '    %s (%s)\n' "$(cut -f2 <<<"$found")" "$(cut -f3 <<<"$found")"
     if [[ "$platform" == "ios" && "$(cut -f3 <<<"$found")" == "physical" ]]; then
-      say "a physical iPhone needs a signing team set in Xcode"
+      say "a physical iPhone needs a signing team — tool/ios-signing.sh"
     fi
   fi
 

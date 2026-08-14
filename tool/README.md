@@ -97,12 +97,42 @@ anything after `--` straight through to flutter:
 tool/target-android.sh --release -- --split-per-abi
 ```
 
-Debug is the default deliberately: nothing here is signed yet, so `--release`
-fails outright on iOS and quietly debug-signs on Android. Two target-specific
+Debug is the default deliberately: Android quietly debug-signs, and iOS needs
+a development team before `--release` means anything. Two target-specific
 flags exist for that — `tool/target-android.sh --aab` for the Play Console
-format, and `tool/target-ios.sh --codesign` once a development team is
-configured in Xcode. A physical iPhone cannot be run or installed on without
-one.
+format, and `tool/target-ios.sh --codesign` once a team is set.
+
+## Signing for iOS
+
+```sh
+tool/ios-signing.sh                 # what is set, and what could be
+tool/ios-signing.sh ABCDE12345      # set it
+tool/ios-signing.sh --clear         # back to simulator-only
+```
+
+A physical iPhone cannot be run on or installed to without a development
+team. Which Apple ID supplies it is a property of the machine rather than of
+the project, so the setting is written to `app/ios/Flutter/Signing.xcconfig`,
+which is gitignored and which `Debug.xcconfig` and `Release.xcconfig` pull in
+with an **optional** include — a clone with no Apple ID still builds for the
+simulator, and nobody's team ID lands in the repository.
+
+A free personal team is enough here: the iOS target declares no entitlements
+at all, so nothing needs a paid membership. It signs builds for your own
+devices and nothing more — no TestFlight, no App Store, seven-day expiry,
+three apps per device.
+
+Installing a release build on an attached, paired iPhone with Developer Mode
+on:
+
+```sh
+tool/run-ios.sh --release
+```
+
+It stays installed and launches on its own after you quit flutter's console.
+When a personal team's seven days lapse the app stops launching; re-running
+that command reinstalls over the top, which keeps the chosen data folder
+because the bookmark lives in the app's preferences.
 
 ## Icons
 

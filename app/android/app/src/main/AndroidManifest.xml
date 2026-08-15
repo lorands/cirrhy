@@ -2,6 +2,9 @@
     <!-- The running-timer badge is a notification (TimerBadge.kt); Android 13+
          gates posting it behind this runtime permission. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Huawei/Honor launchers ignore notification dots and want their own
+         badge provider instead; this is its install-time permission. -->
+    <uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE"/>
     <application
         android:label="Cirrhy"
         android:name="${applicationName}"

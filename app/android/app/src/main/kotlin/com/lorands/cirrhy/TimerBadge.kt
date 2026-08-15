@@ -21,7 +21,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
@@ -81,6 +83,7 @@ class TimerBadge(private val activity: Activity) :
         val title = call.argument<String>("title") ?: return
         val startedAt = call.argument<Long>("startedAt")
         ensureChannel(call.argument<String>("channelName") ?: title)
+        setVendorBadge(1)
 
         val open = PendingIntent.getActivity(
             activity,
@@ -127,6 +130,34 @@ class TimerBadge(private val activity: Activity) :
     private fun hide() {
         pending = null
         manager().cancel(NOTIFICATION_ID)
+        setVendorBadge(0)
+    }
+
+    /**
+     * EMUI's launcher never grew the framework's notification dots — Huawei
+     * had numeric badges first, behind its own content provider, and kept
+     * them. So on Huawei and Honor the count is pushed there too; the
+     * notification above still carries the shade and the chronometer. Any
+     * hiccup is swallowed: a launcher without the provider (or with badges
+     * toggled off for the app) just shows no badge, exactly as before.
+     */
+    private fun setVendorBadge(count: Int) {
+        val make = Build.MANUFACTURER.lowercase()
+        if (make != "huawei" && make != "honor") return
+        try {
+            val extras = Bundle()
+            extras.putString("package", activity.packageName)
+            extras.putString("class", MainActivity::class.java.name)
+            extras.putInt("badgenumber", count)
+            activity.contentResolver.call(
+                Uri.parse("content://com.huawei.android.launcher.settings/badge/"),
+                "change_badge",
+                null,
+                extras,
+            )
+        } catch (_: Exception) {
+            // No provider, or badges disallowed for the app — no badge, no harm.
+        }
     }
 
     /**

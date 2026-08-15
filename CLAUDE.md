@@ -97,7 +97,7 @@ While this device's timer runs, the launcher icon carries a badge. One Dart serv
 - **Linux** (`my_application.cc`): swaps the window icon to `-running` (X11) and emits the Unity LauncherEntry count signal — KDE and most docks render it, stock GNOME Shell needs a dock extension, and it keys off the installed `.desktop` file (see above). Verified on this machine's build.
 - **macOS** (`MainFlutterWindow.swift`): swaps `NSApp.applicationIconImage` to `AppIconRunning`; nil restores the bundle icon. `dockTile.badgeLabel` was rejected — it renders as an unread-count bubble.
 - **Windows** (`flutter_window.cpp`): `ITaskbarList3::SetOverlayIcon` with `badge_overlay.ico`. Compiles untested, like the rest of the Windows target.
-- **Android** (`TimerBadge.kt`): a silent ongoing notification in a badge-enabled channel — launcher dot, live chronometer in the shade, tap opens the app. Android 13+ asks for `POST_NOTIFICATIONS` the first time a timer starts; refusal costs only the badge.
+- **Android** (`TimerBadge.kt`): a silent ongoing notification in a badge-enabled channel — launcher dot, live chronometer in the shade, tap opens the app. Android 13+ asks for `POST_NOTIFICATIONS` the first time a timer starts; refusal costs only the badge. Huawei/Honor launchers ignore notification dots outright, so on those the count is also pushed to EMUI's own badge provider (found the hard way on the Mate 10 Pro, 2026-08-15).
 - **iOS** (`AppDelegate.swift`): badge count 1, behind a `.badge`-only authorization prompt on first start; refusal costs only the badge.
 
 ## What Cirrhy is

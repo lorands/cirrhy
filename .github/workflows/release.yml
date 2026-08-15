@@ -20,6 +20,10 @@
 # iOS is deliberately absent: an installable build needs a signing identity
 # no CI secret store should hold for an OSS project, and an unsigned .ipa
 # helps nobody. README.md documents building onto your own iPhone.
+#
+# Publishing is idempotent: if a release for the tag already exists (drafted
+# by hand, or left by an earlier run), its notes and assets are replaced
+# rather than the job failing.
 
 name: release
 
@@ -208,9 +212,22 @@ jobs:
 
           \`sha256sums.txt\` covers every file above.
           EOF
-          gh release create "$GITHUB_REF_NAME" \
-            --verify-tag \
-            --title "Cirrhy $ver" \
-            --notes-file ../notes.md \
-            --generate-notes \
-            -- *
+          # A release for this tag may already exist — drafting one in the
+          # GitHub UI is a normal way to push the tag in the first place, and
+          # re-running this job is a normal way to refresh a build. Adopt it:
+          # replace its notes and assets instead of failing. (gh release edit
+          # has no --generate-notes, so the adopted path skips the
+          # auto-generated changelog section.)
+          if gh release view "$GITHUB_REF_NAME" --json id >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "Cirrhy $ver" \
+              --notes-file ../notes.md
+            gh release upload "$GITHUB_REF_NAME" --clobber -- *
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "Cirrhy $ver" \
+              --notes-file ../notes.md \
+              --generate-notes \
+              -- *
+          fi

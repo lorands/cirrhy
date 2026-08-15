@@ -641,5 +641,9 @@
   "folderUnreachableShort": "Folder unreachable",
   "@folderUnreachableShort": {
     "description": "Status line in the desktop rail's footer (G1) while the data folder cannot be reached — the compact counterpart of folderUnreachableTitle."
+  },
+  "syncRefreshNow": "Check for changes now",
+  "@syncRefreshNow": {
+    "description": "Tooltip on the sync-status line, which re-reads the file when tapped. 'Check for changes' rather than 'sync': Cirrhy never talks to a sync service, it only re-reads the file the user's own sync client maintains."
   }
 }

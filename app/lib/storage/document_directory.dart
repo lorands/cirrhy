@@ -64,6 +64,24 @@ abstract interface class DocumentDirectory {
     List<String> names,
   );
 
+  /// Fires whenever something that is not this app changes what is inside
+  /// [location] — which is exactly what a sync client delivering another
+  /// device's write looks like from here.
+  ///
+  /// **Additive, never a replacement for asking.** §4.4 lists "no change
+  /// notification" as an accepted failure mode and that stays true: the
+  /// platforms with nothing to offer return an empty stream, and even where
+  /// the signal exists a cloud provider decides for itself whether and when to
+  /// send it. `SessionRefresher`'s schedule is what makes the document
+  /// current; this only makes it current *sooner*, and where it works it turns
+  /// "up to a minute late" into "as it lands".
+  ///
+  /// The subscription owns the platform-side observation: cancelling it stops
+  /// the watching, and a second subscription is a second observer. A stream
+  /// that errors or ends is the platform saying it cannot watch — a fact about
+  /// the platform, never a failure the user should be told about.
+  Stream<void> watch(DocumentLocation location);
+
   /// A store bound to [location], to hand to a `DocumentRepository`.
   ///
   /// [fileName] exists for the manual backup (§11), which writes its dated

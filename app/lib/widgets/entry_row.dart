@@ -149,6 +149,13 @@ class EntryRow extends StatelessWidget {
                                 style: text.labelSmall?.copyWith(
                                   color: colors.textMuted,
                                 ),
+                                // One line, like the description above it: the
+                                // row's height is fixed at 80 for exactly
+                                // three lines, so a caption allowed to wrap
+                                // overflows it on a narrow phone — and this
+                                // caption's length is a translator's choice.
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ],

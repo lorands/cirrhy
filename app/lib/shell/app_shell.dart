@@ -15,7 +15,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/document_session.dart';
-import '../data/session_resume_observer.dart';
+import '../data/session_refresher.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../projects/projects_screen.dart';
 import '../reports/reports_screen.dart';
@@ -25,7 +25,7 @@ import '../settings/settings_screen.dart';
 import '../settings/theme_preference.dart';
 import '../storage/document_directory.dart';
 import '../sync/folder_unreachable_dialog.dart';
-import '../sync/sync_status_footer.dart';
+import '../sync/sync_status.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.dart';
 import '../timer/timer_badge.dart';
@@ -202,9 +202,10 @@ class _AppShellState extends State<AppShell> {
     final session = widget.session;
     final body = _shell(context);
     if (session == null) return body;
-    // §4.4: nothing tells us the file changed while the app was backgrounded,
-    // so returning to the foreground re-reads and merges.
-    return SessionResumeObserver(session: session, child: body);
+    // §4.4: nothing tells us the file changed underneath us, so the app keeps
+    // asking for as long as it is in front — bunched right after a resume,
+    // then steadily.
+    return SessionRefresher(session: session, child: body);
   }
 
   Widget _shell(BuildContext context) {
@@ -263,6 +264,13 @@ class _AppShellState extends State<AppShell> {
                               bottom: false,
                               child: _content(_index),
                             ),
+                          ),
+                          // The rail's footer, for the layout that has no
+                          // rail: same information, same place in the frame,
+                          // above the bar rather than below the destinations.
+                          SyncStatus(
+                            session: widget.session,
+                            placement: SyncStatusPlacement.bar,
                           ),
                           _BottomBar(
                             items: items,
@@ -478,7 +486,7 @@ class _Rail extends StatelessWidget {
               const Spacer(),
               // The reserved slot, filled: sync state where the desktop
               // mockup (G1) puts it, listening to the session on its own.
-              SyncStatusFooter(session: session),
+              SyncStatus(session: session),
             ],
           ),
         ),

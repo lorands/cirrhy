@@ -60,6 +60,19 @@ final class PathDocumentDirectory implements DocumentDirectory {
     return found;
   }
 
+  /// Nothing, for now.
+  ///
+  /// These two are the platforms where a real watcher is *easiest* —
+  /// `Directory.watch` is inotify on Linux and ReadDirectoryChangesW on
+  /// Windows — and where it has bought the least, because a desktop sync
+  /// client writes the file promptly and the schedule catches it within the
+  /// minute. It went unbuilt with the Apple presenters (2026-08-15) to keep
+  /// that change to the platform that actually had the problem. Filter any
+  /// future implementation to [knownDocumentFileNames]: the temp file every
+  /// save creates and renames is our own noise.
+  @override
+  Stream<void> watch(DocumentLocation location) => const Stream.empty();
+
   @override
   DocumentStore storeAt(
     DocumentLocation location, {

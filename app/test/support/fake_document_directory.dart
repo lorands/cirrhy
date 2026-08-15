@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:async';
+
 import 'package:cirrhy/storage/document_directory.dart';
 import 'package:cirrhy/storage/document_location.dart';
 import 'package:cirrhy_merge/cirrhy_merge.dart';
@@ -67,6 +69,39 @@ final class FakeDocumentDirectory implements DocumentDirectory {
           stores[_key(location, name)]?.bytes != null)
         name,
   ];
+
+  /// Stands in for the platform's folder watcher — the `NSFilePresenter` on
+  /// the two Apple platforms, nothing at all on the other three.
+  final _changes = StreamController<void>.broadcast();
+
+  /// Which locations [watch] has been asked about, in order.
+  final List<DocumentLocation> watched = [];
+
+  /// How many watch subscriptions are live right now, so a test can hold the
+  /// session to letting go of the folder it no longer uses.
+  int liveWatchers = 0;
+
+  /// Fires the folder-changed signal at every live watcher, exactly as a sync
+  /// client dropping a new file would.
+  void announceChange() => _changes.add(null);
+
+  @override
+  Stream<void> watch(DocumentLocation location) {
+    watched.add(location);
+    late StreamController<void> out;
+    StreamSubscription<void>? source;
+    out = StreamController<void>(
+      onListen: () {
+        liveWatchers++;
+        source = _changes.stream.listen(out.add);
+      },
+      onCancel: () async {
+        liveWatchers--;
+        await source?.cancel();
+      },
+    );
+    return out.stream;
+  }
 
   /// One in-memory store per handle and file name, shared across calls, so a
   /// "second device" is just a second repository over the same location.

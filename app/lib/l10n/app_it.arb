@@ -150,5 +150,6 @@
   "reselectFolderAction": "Scegli di nuovo la cartella…",
   "notNowAction": "Non ora",
   "syncedAtTime": "Sincronizzato · {time}",
-  "folderUnreachableShort": "Cartella irraggiungibile"
+  "folderUnreachableShort": "Cartella irraggiungibile",
+  "syncRefreshNow": "Cerca modifiche ora"
 }

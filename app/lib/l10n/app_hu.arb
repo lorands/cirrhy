@@ -150,5 +150,6 @@
   "reselectFolderAction": "Mappa újraválasztása…",
   "notNowAction": "Most nem",
   "syncedAtTime": "Szinkronizálva · {time}",
-  "folderUnreachableShort": "A mappa nem érhető el"
+  "folderUnreachableShort": "A mappa nem érhető el",
+  "syncRefreshNow": "Változások keresése most"
 }

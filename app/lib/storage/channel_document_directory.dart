@@ -36,6 +36,18 @@ final class ChannelDocumentDirectory implements DocumentDirectory {
   /// files because what crosses it is a folder grant, not a file descriptor.
   static const channel = MethodChannel('com.lorands.cirrhy/documents');
 
+  /// The one-way half: the folder telling us it changed.
+  ///
+  /// Its own channel because it is a stream rather than a call and answer, and
+  /// because only the two Apple platforms have anything to put on it — the
+  /// `NSFilePresenter` registered while the app watches a folder. Android is
+  /// deliberately silent here: SAF's content observers are not delivered by
+  /// cloud-backed providers, so a listener would be a promise the platform
+  /// does not keep.
+  static const changesChannel = EventChannel(
+    'com.lorands.cirrhy/document-changes',
+  );
+
   /// The code the native side raises when a handle no longer resolves.
   static const unavailableCode = 'unavailable';
 
@@ -86,6 +98,18 @@ final class ChannelDocumentDirectory implements DocumentDirectory {
       throw _translate(e, location);
     }
   }
+
+  @override
+  Stream<void> watch(DocumentLocation location) => changesChannel
+      .receiveBroadcastStream(location.handle)
+      // A platform with no handler for this channel raises
+      // MissingPluginException the moment anything listens, and a handle that
+      // no longer resolves raises too. Both mean the same thing here — no
+      // signal from this folder — and neither is worth surfacing: the
+      // schedule keeps the document current either way, and the folder going
+      // bad is already reported by every read and write.
+      .handleError((Object _) {})
+      .map((_) {});
 
   @override
   DocumentStore storeAt(

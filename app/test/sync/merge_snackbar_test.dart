@@ -81,8 +81,8 @@ void main() {
     await drainSnackBars(tester);
   });
 
-  testWidgets('merged-in rows are tinted and captioned exactly until the '
-      'next refresh', (tester) async {
+  testWidgets('merged-in rows are tinted and captioned until a later merge '
+      'brings different ones', (tester) async {
     var now = DateTime.utc(2026, 8, 13, 9);
     final harness = await SyncHarness.open(clock: () => now);
     addTearDown(harness.session.dispose);
@@ -111,10 +111,32 @@ void main() {
     expect(tinted, findsOneWidget);
     await drainSnackBars(tester);
 
-    // The next refresh recomputes the set; nothing new means no marks.
+    // An empty-handed refresh leaves the mark standing — with reads a couple
+    // of seconds apart after a resume, clearing on those would take it away
+    // before anyone read it.
     await harness.session.refresh();
     await tester.pump();
-    expect(find.text('new from another device'), findsNothing);
-    expect(tinted, findsNothing);
+    expect(find.text('new from another device'), findsOneWidget);
+    expect(tinted, findsOneWidget);
+
+    // A merge that brings something replaces the set: the mark moves rather
+    // than accumulating.
+    now = now.add(const Duration(hours: 1));
+    await harness.writeAsOtherDevice(
+      (doc) =>
+          doc.put(entryAt('theirs-2', now, description: 'Also the laptop')),
+    );
+    await harness.session.refresh();
+    await tester.pump();
+
+    expect(find.text('new from another device'), findsOneWidget);
+    expect(tinted, findsOneWidget);
+    final marked = tester.widget<EntryRow>(
+      find.ancestor(
+        of: find.text('new from another device'),
+        matching: find.byType(EntryRow),
+      ),
+    );
+    expect(marked.entry.id, 'theirs-2');
   });
 }

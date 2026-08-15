@@ -96,7 +96,11 @@ class _TimerScreenState extends State<TimerScreen> {
         .entriesByRecency();
     final myTimer = session?.myTimer;
 
-    return ListView(
+    final list = ListView(
+      // Always scrollable, so the pull-to-refresh below still has something to
+      // pull on the screen where it matters most: an empty or one-entry list,
+      // which is exactly what a device waiting for its first sync shows.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         Space.x4,
         Space.x6,
@@ -151,6 +155,19 @@ class _TimerScreenState extends State<TimerScreen> {
         else
           _EntryGroups(entries: entries, session: session),
       ],
+    );
+
+    if (session == null) return list;
+    // Pull-to-refresh on the screen the user is looking at when they wonder
+    // where the other device's work went. `SessionRefresher` is what keeps the
+    // document current on its own; this is the manual ask for when a sync
+    // client has been slower than the schedule (§4.4), and the one affordance
+    // that turns "it hasn't arrived" into a thing the user can act on.
+    return RefreshIndicator(
+      onRefresh: session.refresh,
+      color: CirrhyTheme.of(context).brand,
+      backgroundColor: CirrhyTheme.of(context).surface,
+      child: list,
     );
   }
 }

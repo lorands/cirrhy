@@ -150,5 +150,6 @@
   "reselectFolderAction": "Volver a elegir carpeta…",
   "notNowAction": "Ahora no",
   "syncedAtTime": "Sincronizado · {time}",
-  "folderUnreachableShort": "Carpeta inaccesible"
+  "folderUnreachableShort": "Carpeta inaccesible",
+  "syncRefreshNow": "Buscar cambios ahora"
 }

@@ -54,13 +54,35 @@ final class FakeDocumentDirectory implements DocumentDirectory {
   Future<List<String>> existingDocuments(DocumentLocation location) async =>
       existing;
 
-  /// One in-memory store per handle, shared across calls, so a "second
-  /// device" is just a second repository over the same location.
+  /// Answers from [existing] plus whatever has actually been written, so the
+  /// backup's find-a-free-name loop behaves against this fake the way it does
+  /// against a real folder: the name it just wrote is taken on the next ask.
+  @override
+  Future<List<String>> existingFiles(
+    DocumentLocation location,
+    List<String> names,
+  ) async => [
+    for (final name in names)
+      if (existing.contains(name) ||
+          stores[_key(location, name)]?.bytes != null)
+        name,
+  ];
+
+  /// One in-memory store per handle and file name, shared across calls, so a
+  /// "second device" is just a second repository over the same location.
   final Map<String, MemoryDocumentStore> stores = {};
 
   @override
-  MemoryDocumentStore storeAt(DocumentLocation location) =>
-      stores.putIfAbsent(location.handle, () => MemoryDocumentStore(location));
+  MemoryDocumentStore storeAt(
+    DocumentLocation location, {
+    String fileName = documentFileName,
+  }) => stores.putIfAbsent(
+    _key(location, fileName),
+    () => MemoryDocumentStore(location),
+  );
+
+  static String _key(DocumentLocation location, String fileName) =>
+      '${location.handle}::$fileName';
 
   static const _nowhere = DocumentLocation(handle: '?', label: '?');
 }

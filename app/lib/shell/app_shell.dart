@@ -321,6 +321,7 @@ class _AppShellState extends State<AppShell> {
       locationPreference: location,
       directory: directory,
       themePreference: widget.themePreference,
+      session: widget.session,
     );
   }
 }

@@ -99,3 +99,22 @@ const List<String> knownDocumentFileNames = <String>[documentFileName];
 /// Distinctive because it is created inside a folder the user is watching and
 /// a sync client is uploading. Anything matching it is ours and can be swept.
 const String documentTempPrefix = '$documentFileName.tmp-';
+
+/// Prefix of the manual beside-the-file backup (DESIGN.md §11).
+///
+/// Deliberately not a [knownDocumentFileNames] entry: backups are inert to
+/// the app — never adopted, never read, never deleted. The prefix exists so a
+/// human recognises the copies in their folder, not so code can find them.
+const String documentBackupPrefix = 'cirrhy-backup-';
+
+/// The name of a manual backup taken on [date]: `cirrhy-backup-2026-08-15.json`.
+///
+/// [copy] separates same-day repeats — `-2`, `-3` — because overwriting would
+/// silently destroy a snapshot the user deliberately took (§11). The date is
+/// used as given; the caller passes local time, since the name is for the
+/// user and should carry the date on their wall clock.
+String backupFileName(DateTime date, {int copy = 1}) {
+  String pad(int n, [int width = 2]) => n.toString().padLeft(width, '0');
+  final stamp = '${pad(date.year, 4)}-${pad(date.month)}-${pad(date.day)}';
+  return '$documentBackupPrefix$stamp${copy <= 1 ? '' : '-$copy'}.json';
+}

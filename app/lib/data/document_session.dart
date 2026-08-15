@@ -336,6 +336,58 @@ class DocumentSession extends ChangeNotifier {
   /// not resurrect it (§3.3).
   Future<void> delete(String id) => _commit((doc) => doc.delete(id, _now()));
 
+  // ---- Backup ------------------------------------------------------------
+
+  /// The manual beside-the-file backup of DESIGN.md §11: copies the document
+  /// to `cirrhy-backup-YYYY-MM-DD.json` in the folder it lives in.
+  ///
+  /// Runs on the commit queue, so the copy is taken after every pending save
+  /// has flushed — the on-disk bytes, what is durably true, never a
+  /// re-serialization of memory. The bytes are read and written through the
+  /// same stores the document uses; the backup file itself stays inert to the
+  /// app: never adopted, never read back, never deleted.
+  ///
+  /// Returns the name written; null when there is no document on disk to copy
+  /// yet. Throws [DocumentLocationUnavailable] like any save would.
+  Future<String?> backUpNow() async {
+    String? written;
+    await _run(() async {
+      final location = _locationPreference.location;
+      if (location == null) return;
+      final stored = await _directory.storeAt(location).read();
+      if (stored.bytes.isEmpty) return;
+      final name = await _freeBackupName(location);
+      await _directory.storeAt(location, fileName: name).write(stored.bytes);
+      written = name;
+    });
+    return written;
+  }
+
+  /// The first `cirrhy-backup-<today>[-N].json` not already in the folder.
+  ///
+  /// Today in the user's local time — the name is for them, and a backup
+  /// taken at half past midnight should carry the date on their wall clock.
+  /// Asked in batches to keep it one round trip in every real case; a
+  /// hundredth same-day copy is not a real scenario, and past it reusing the
+  /// last name loses one backup rather than failing the action.
+  Future<String> _freeBackupName(DocumentLocation location) async {
+    final today = _clock();
+    for (var batch = 0; batch < 10; batch++) {
+      final candidates = [
+        for (var copy = batch * 10 + 1; copy <= batch * 10 + 10; copy++)
+          backupFileName(today, copy: copy),
+      ];
+      final taken = (await _directory.existingFiles(
+        location,
+        candidates,
+      )).toSet();
+      for (final name in candidates) {
+        if (!taken.contains(name)) return name;
+      }
+    }
+    return backupFileName(today, copy: 100);
+  }
+
   // ---- Internals ---------------------------------------------------------
 
   DateTime _now() => _clock().toUtc();

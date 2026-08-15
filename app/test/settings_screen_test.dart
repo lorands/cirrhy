@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:cirrhy/about/version.dart';
+import 'package:cirrhy/data/document_session.dart';
 import 'package:cirrhy/l10n/generated/app_localizations.dart';
 import 'package:cirrhy/main.dart';
 import 'package:cirrhy/settings/about_screen.dart';
@@ -22,6 +23,7 @@ import 'package:cirrhy/settings/settings_screen.dart';
 import 'package:cirrhy/settings/theme_preference.dart';
 import 'package:cirrhy/storage/document_location.dart';
 import 'package:cirrhy/theme/theme.dart';
+import 'package:cirrhy_merge/cirrhy_merge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -49,6 +51,7 @@ void main() {
     required DocumentLocationPreference location,
     required LocalePreference locale,
     ThemePreference? theme,
+    DocumentSession? session,
     bool firstRun = false,
     Locale displayLocale = const Locale('en'),
   }) async {
@@ -66,12 +69,30 @@ void main() {
             locationPreference: location,
             directory: directory,
             themePreference: theme,
+            session: session,
             firstRun: firstRun,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  /// A session already open over [directory], for the backup row. The clock
+  /// is pinned so the dated file name is predictable.
+  Future<DocumentSession> sessionOver(
+    FakeDocumentDirectory directory,
+    DocumentLocationPreference location,
+  ) async {
+    final session = DocumentSession(
+      directory: directory,
+      locationPreference: location,
+      clock: () => DateTime(2026, 8, 15, 12),
+      deviceId: 'device-test',
+    );
+    addTearDown(session.dispose);
+    await session.open();
+    return session;
   }
 
   group('first run', () {
@@ -391,6 +412,140 @@ void main() {
       expect(find.text('Általános'), findsOneWidget);
       expect(find.text('Megjelenés'), findsWidgets);
       expect(find.text('Névjegy'), findsOneWidget);
+    });
+  });
+
+  // The manual beside-the-file backup of DESIGN.md §11. The engine-side
+  // promises live in document_session_backup_test.dart; here it is the row:
+  // when it shows, what it says, and that the name it reports is real.
+  group('manual backup', () {
+    testWidgets('backs up and says which file it wrote', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await location.set(dropbox);
+      final directory = FakeDocumentDirectory();
+      final session = await sessionOver(directory, location);
+      await session.put(
+        Client(id: 'acme', modified: DateTime.utc(2026, 8, 15), name: 'Acme'),
+      );
+      await pumpSettings(
+        tester,
+        directory: directory,
+        location: location,
+        locale: locale,
+        session: session,
+      );
+
+      await tester.tap(find.text('Back up now'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Backup saved as cirrhy-backup-2026-08-15.json.'),
+        findsOneWidget,
+      );
+      expect(
+        directory
+            .storeAt(dropbox, fileName: 'cirrhy-backup-2026-08-15.json')
+            .bytes,
+        directory.storeAt(dropbox).bytes,
+      );
+
+      // A same-day repeat is a new file, not an overwrite (§11).
+      await tester.tap(find.text('Back up now'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Backup saved as cirrhy-backup-2026-08-15-2.json.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('says so when there is no file to copy yet', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await location.set(dropbox);
+      final directory = FakeDocumentDirectory();
+      final session = await sessionOver(directory, location);
+      await pumpSettings(
+        tester,
+        directory: directory,
+        location: location,
+        locale: locale,
+        session: session,
+      );
+
+      await tester.tap(find.text('Back up now'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'There is nothing to back up yet — the file has not been created.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a folder that cannot be written says so', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await location.set(dropbox);
+      final directory = FakeDocumentDirectory();
+      final session = await sessionOver(directory, location);
+      await session.put(
+        Client(id: 'acme', modified: DateTime.utc(2026, 8, 15), name: 'Acme'),
+      );
+      directory.storeAt(dropbox).unavailable = true;
+      await pumpSettings(
+        tester,
+        directory: directory,
+        location: location,
+        locale: locale,
+        session: session,
+      );
+
+      await tester.tap(find.text('Back up now'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'The backup could not be written. Check that the folder is '
+          'reachable.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the row stays away without a session', (tester) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await location.set(dropbox);
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(),
+        location: location,
+        locale: locale,
+      );
+
+      expect(find.text('Back up now'), findsNothing);
+    });
+
+    testWidgets('and away from first run, where nothing exists to copy', (
+      tester,
+    ) async {
+      await useTallSurface(tester);
+      final (locale, location) = await prefs();
+      await pumpSettings(
+        tester,
+        directory: FakeDocumentDirectory(picked: dropbox),
+        location: location,
+        locale: locale,
+        firstRun: true,
+      );
+
+      await tester.tap(find.text('Choose folder…'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Back up now'), findsNothing);
     });
   });
 

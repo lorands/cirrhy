@@ -2,7 +2,7 @@
 
 # Cirrhy
 
-**A personal time tracker that keeps everything you track in a single file you own.**
+**A personal FREE OSS time tracker that keeps everything you track in a single file YOU OWN.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44-02569B.svg?logo=flutter)](https://flutter.dev)

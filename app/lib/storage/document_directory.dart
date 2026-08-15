@@ -52,8 +52,28 @@ abstract interface class DocumentDirectory {
   /// setting up the second device the same three taps as the first.
   Future<List<String>> existingDocuments(DocumentLocation location);
 
+  /// Which of [names] already exist in [location].
+  ///
+  /// The general form behind [existingDocuments], asked by name rather than
+  /// by listing the folder — a SAF directory listing is expensive, and the
+  /// callers only ever have a yes/no question about names they already know.
+  /// The manual backup (§11) uses it to find a free dated name instead of
+  /// overwriting a copy the user deliberately took.
+  Future<List<String>> existingFiles(
+    DocumentLocation location,
+    List<String> names,
+  );
+
   /// A store bound to [location], to hand to a `DocumentRepository`.
-  DocumentStore storeAt(DocumentLocation location);
+  ///
+  /// [fileName] exists for the manual backup (§11), which writes its dated
+  /// sibling copy through the same store the document uses — same channel,
+  /// same failure modes, same [DocumentLocationUnavailable]. Nothing else
+  /// passes it: the document's own name is fixed and never asked (§4.6).
+  DocumentStore storeAt(
+    DocumentLocation location, {
+    String fileName = documentFileName,
+  });
 
   /// The implementation for the platform this build is running on.
   ///

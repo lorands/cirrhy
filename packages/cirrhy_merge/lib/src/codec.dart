@@ -33,8 +33,9 @@ final class DocumentFormatException implements Exception {
 
 /// Encodes and decodes the document.
 ///
-/// DESIGN.md §5 leaves JSON vs CBOR open. This is the JSON implementation; the
-/// interface exists so swapping it does not reach into the merge engine.
+/// DESIGN.md §5 decided JSON (2026-08-14). The interface stays as the escape
+/// hatch: a future format change would swap the implementation without
+/// reaching into the merge engine.
 abstract interface class DocumentCodec {
   List<int> encode(CirrhyDocument doc);
   CirrhyDocument decode(List<int> bytes);
@@ -161,6 +162,8 @@ final class JsonDocumentCodec implements DocumentCodec {
     modified: _time(m, 'modified'),
     name: _str(m, 'name'),
     archived: m['archived'] == true,
+    importSource: m['importSource'] as String?,
+    externalId: m['externalId'] as String?,
     history: _history(m),
   );
 
@@ -173,6 +176,8 @@ final class JsonDocumentCodec implements DocumentCodec {
     color: m['color'] as String?,
     billable: m['billable'] == true,
     archived: m['archived'] == true,
+    importSource: m['importSource'] as String?,
+    externalId: m['externalId'] as String?,
     history: _history(m),
   );
 
@@ -183,6 +188,8 @@ final class JsonDocumentCodec implements DocumentCodec {
     projectId: m['projectId'] as String?,
     locationChanged: _time(m, 'locationChanged'),
     archived: m['archived'] == true,
+    importSource: m['importSource'] as String?,
+    externalId: m['externalId'] as String?,
     history: _history(m),
   );
 
@@ -196,6 +203,8 @@ final class JsonDocumentCodec implements DocumentCodec {
     taskId: m['taskId'] as String?,
     description: (m['description'] as String?) ?? '',
     billable: m['billable'] == true,
+    importSource: m['importSource'] as String?,
+    externalId: m['externalId'] as String?,
     history: _history(m),
   );
 
@@ -206,6 +215,8 @@ final class JsonDocumentCodec implements DocumentCodec {
     projectId: m['projectId'] as String?,
     taskId: m['taskId'] as String?,
     description: (m['description'] as String?) ?? '',
+    importSource: m['importSource'] as String?,
+    externalId: m['externalId'] as String?,
     history: _history(m),
   );
 

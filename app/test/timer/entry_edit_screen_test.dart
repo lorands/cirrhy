@@ -541,6 +541,45 @@ void main() {
     });
 
     testWidgets(
+      'editing an imported entry carries its provenance through untouched',
+      (tester) async {
+        // §10: importSource/externalId are set once by an import and must
+        // survive every subsequent edit — batch rollback stops working the
+        // moment a rebuild-by-hand drops them.
+        final session = await openSession(FakeDocumentDirectory());
+        addTearDown(session.dispose);
+        final start = now.subtract(const Duration(hours: 2));
+        await session.put(
+          TimeEntry(
+            id: 'e1',
+            modified: start,
+            start: start,
+            stop: start.add(const Duration(hours: 1)),
+            projectId: null,
+            locationChanged: start,
+            description: 'imported work',
+            importSource: 'kimai - truenas',
+            externalId: 'timesheet:1842',
+          ),
+        );
+
+        await pumpEditor(tester, session, 'e1');
+        await tester.enterText(find.byType(TextField), 'edited after import');
+
+        now = now.add(const Duration(minutes: 5));
+        await tester.tap(find.text('Save'));
+        await tester.pump();
+        await session.idle;
+        await tester.pumpAndSettle();
+
+        final saved = session.document.entries['e1']!;
+        expect(saved.description, 'edited after import');
+        expect(saved.importSource, 'kimai - truenas');
+        expect(saved.externalId, 'timesheet:1842');
+      },
+    );
+
+    testWidgets(
       'create mode (entryId null) prefills a zero-length entry at now, hides '
       'Delete and History, and Save mints a brand-new record',
       (tester) async {

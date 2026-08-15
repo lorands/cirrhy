@@ -93,6 +93,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         id: client.id,
         modified: widget.clock().toUtc(),
         name: client.name,
+        importSource: client.importSource,
+        externalId: client.externalId,
         history: client.history,
       ),
     );
@@ -110,6 +112,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         locationChanged: project.locationChanged,
         color: project.color,
         billable: project.billable,
+        importSource: project.importSource,
+        externalId: project.externalId,
         history: project.history,
       ),
     );

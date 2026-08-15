@@ -260,7 +260,7 @@ The rest was settled in a design grilling on 2026-08-14. The load-bearing realis
 - a **JSON Schema** for the document format, so an importer can machine-validate its output before writing;
 - an **agent-facing Markdown spec** (llms-file style): the entity model (clients → projects → tasks, entries, tombstones, per-device running timers), the field and timestamp rules an importer must respect, the provenance-field rules, and the retry protocol above.
 
-Still to build: the two record fields, the two spec documents.
+Built 2026-08-14: the fields live on every record type in `packages/cirrhy_merge` (formatVersion 2 — a v1 reader would silently strip them, the exact lossy write-back the version gate exists to refuse), and the two documents live in `packages/cirrhy_merge/doc/` (`cirrhy-document.schema.json`, `llms.md`). A schema-sync test in the package compares the schema's field lists against what the codec actually emits, so the spec cannot drift from the code unnoticed.
 
 ---
 

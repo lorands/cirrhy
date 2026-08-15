@@ -263,6 +263,8 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
       taskId: _taskId,
       description: _description.text.trim(),
       billable: current.billable,
+      importSource: current.importSource,
+      externalId: current.externalId,
       history: current.history,
     );
     final navigator = Navigator.of(context);
@@ -323,6 +325,8 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
       taskId: restoredTaskId,
       description: (fields['description'] as String?) ?? '',
       billable: fields['billable'] == true,
+      importSource: fields['importSource'] as String?,
+      externalId: fields['externalId'] as String?,
       history: current.history,
     );
     await widget.session.put(restored);

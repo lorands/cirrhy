@@ -302,6 +302,8 @@ class DocumentSession extends ChangeNotifier {
         projectId: projectId,
         taskId: taskId,
         description: description,
+        importSource: current.importSource,
+        externalId: current.externalId,
         history: current.history,
       ),
     );

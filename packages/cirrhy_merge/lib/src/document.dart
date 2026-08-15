@@ -34,7 +34,12 @@ final class CirrhyDocument {
 
   /// Bumped only for changes the reader cannot infer. Readers must refuse a
   /// version they do not know rather than guess and write a lossy file back.
-  static const int formatVersion = 1;
+  ///
+  /// v2 (2026-08-14): the §10 provenance fields, `importSource` and
+  /// `externalId`. A v1 reader would not know to preserve them and would
+  /// silently strip an import batch's addressability on its first write-back
+  /// — exactly the lossy case this constant exists to refuse.
+  static const int formatVersion = 2;
 
   final Map<String, Client> clients;
   final Map<String, Project> projects;

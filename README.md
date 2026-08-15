@@ -2,7 +2,7 @@
 
 # Cirrhy
 
-**A personal time tracker that keeps everything you track in a single file you own.**
+**A personal FREE OSS time tracker that keeps everything you track in a single file YOU OWN.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44-02569B.svg?logo=flutter)](https://flutter.dev)
@@ -169,6 +169,42 @@ tool/dev.sh            # desktop + mobile side by side, one hot reload for both
 tool/check.sh          # flutter analyze + formatting report
 tool/test.sh           # engine suite, then app suite
 ```
+
+## Importing from another tracker
+
+Cirrhy ships no importers, deliberately. Every tracker's export is a dialect
+that changes without notice, and a migration is a one-time job — so instead
+of a shelf of brittle vendor parsers, the **file format itself is the import
+seam**, specified well enough that something which has never seen this
+codebase can produce a valid document. In practice that something is an AI
+agent (Claude or equivalent): it reads your export, makes the vendor-specific
+mapping judgements, and writes the records straight into your live
+`cirrhy.json`, which the app picks up on its next refresh exactly as it would
+another device's edits.
+
+The whole contract lives in two files next to the engine:
+
+- [`packages/cirrhy_merge/doc/llms.md`](packages/cirrhy_merge/doc/llms.md) —
+  the agent-facing guide: the entity model, the rules an importer must
+  follow, and the rollback protocol.
+- [`packages/cirrhy_merge/doc/cirrhy-document.schema.json`](packages/cirrhy_merge/doc/cirrhy-document.schema.json)
+  — a JSON Schema the agent validates its output against before writing.
+
+So a migration is one conversation:
+
+> Import my Kimai export at `~/exports/kimai.csv` into my Cirrhy document at
+> `~/Sync/cirrhy/cirrhy.json`. Follow `packages/cirrhy_merge/doc/llms.md` and
+> validate against `packages/cirrhy_merge/doc/cirrhy-document.schema.json`.
+> Show me the client/project mapping table.
+
+There is no import mode and no review gate, because there doesn't need to be
+one: every imported record is stamped with its batch (`importSource`) and its
+identity in the source system (`externalId`), so a wrong mapping is undone by
+tombstoning the batch and re-running — recovery over prevention. Review the
+result in Reports before you start hand-editing imported entries, though: a
+rollback takes edits made to the batch with it. And this is not theory — a
+year of real Kimai history, 211 entries, came across in exactly one such
+conversation.
 
 ## Adding a language
 

@@ -45,17 +45,26 @@ final class PathDocumentDirectory implements DocumentDirectory {
       Directory(location.handle).exists();
 
   @override
-  Future<List<String>> existingDocuments(DocumentLocation location) async {
+  Future<List<String>> existingDocuments(DocumentLocation location) =>
+      existingFiles(location, knownDocumentFileNames);
+
+  @override
+  Future<List<String>> existingFiles(
+    DocumentLocation location,
+    List<String> names,
+  ) async {
     final found = <String>[];
-    for (final name in knownDocumentFileNames) {
+    for (final name in names) {
       if (await File(p.join(location.handle, name)).exists()) found.add(name);
     }
     return found;
   }
 
   @override
-  DocumentStore storeAt(DocumentLocation location) =>
-      PathDocumentStore(location);
+  DocumentStore storeAt(
+    DocumentLocation location, {
+    String fileName = documentFileName,
+  }) => PathDocumentStore(location, fileName: fileName);
 }
 
 /// Reads and writes one file inside a directory the app can address by path.

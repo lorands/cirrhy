@@ -67,6 +67,8 @@ abstract base class CirrhyRecord {
   const CirrhyRecord({
     required this.id,
     required this.modified,
+    this.importSource,
+    this.externalId,
     this.history = const [],
   });
 
@@ -75,6 +77,24 @@ abstract base class CirrhyRecord {
   /// Always UTC. See DESIGN.md §8.4 — timezone handling is still open; the
   /// engine stores instants and leaves presentation to the app.
   final DateTime modified;
+
+  /// Which import produced this record, or null for everything made by hand.
+  ///
+  /// DESIGN.md §10: a free string naming the migration (e.g. `kimai -
+  /// truenas`). Traceability only — the merge never reads it, and nothing
+  /// enforces anything about it. Its one job is making a botched import batch
+  /// addressable after the fact: rollback is "tombstone every record whose
+  /// [importSource] matches, re-import". Set once by the importer, carried
+  /// verbatim through every subsequent edit, never cleared.
+  final String? importSource;
+
+  /// The imported record's identifier in its source system, or null.
+  ///
+  /// DESIGN.md §10: provenance, **not a merge key** — the record [id] is
+  /// still a fresh UUID and the merge stays a union over UUIDs. Compound
+  /// (importer's choice of encoding) when the source needs more than one
+  /// value to name a record.
+  final String? externalId;
 
   final List<RecordVersion> history;
 
@@ -100,6 +120,8 @@ abstract base class RelocatableRecord extends CirrhyRecord {
     required super.modified,
     required this.parentId,
     required this.locationChanged,
+    super.importSource,
+    super.externalId,
     super.history,
   });
 
@@ -116,6 +138,8 @@ final class Client extends CirrhyRecord {
     required super.modified,
     required this.name,
     this.archived = false,
+    super.importSource,
+    super.externalId,
     super.history,
   });
 
@@ -123,7 +147,15 @@ final class Client extends CirrhyRecord {
   final bool archived;
 
   @override
-  Map<String, Object?> toFields() => {'name': name, 'archived': archived};
+  Map<String, Object?> toFields() => {
+    'name': name,
+    'archived': archived,
+    // Emitted only when set, here and in every other record type: hand-made
+    // records carry no provenance and their serialized form should not grow
+    // two null keys apiece for a feature that touched none of them.
+    if (importSource != null) 'importSource': importSource,
+    if (externalId != null) 'externalId': externalId,
+  };
 
   @override
   Client withHistory(List<RecordVersion> history) => Client(
@@ -131,6 +163,8 @@ final class Client extends CirrhyRecord {
     modified: modified,
     name: name,
     archived: archived,
+    importSource: importSource,
+    externalId: externalId,
     history: history,
   );
 }
@@ -145,6 +179,8 @@ final class Project extends RelocatableRecord {
     this.color,
     this.billable = false,
     this.archived = false,
+    super.importSource,
+    super.externalId,
     super.history,
   }) : super(parentId: clientId);
 
@@ -162,6 +198,8 @@ final class Project extends RelocatableRecord {
     'color': color,
     'billable': billable,
     'archived': archived,
+    if (importSource != null) 'importSource': importSource,
+    if (externalId != null) 'externalId': externalId,
   };
 
   @override
@@ -184,6 +222,8 @@ final class Project extends RelocatableRecord {
     color: color,
     billable: billable,
     archived: archived,
+    importSource: importSource,
+    externalId: externalId,
     history: history ?? this.history,
   );
 }
@@ -196,6 +236,8 @@ final class Task extends RelocatableRecord {
     required String? projectId,
     required super.locationChanged,
     this.archived = false,
+    super.importSource,
+    super.externalId,
     super.history,
   }) : super(parentId: projectId);
 
@@ -209,6 +251,8 @@ final class Task extends RelocatableRecord {
     'name': name,
     'projectId': projectId,
     'archived': archived,
+    if (importSource != null) 'importSource': importSource,
+    if (externalId != null) 'externalId': externalId,
   };
 
   @override
@@ -229,6 +273,8 @@ final class Task extends RelocatableRecord {
     projectId: projectId ?? this.projectId,
     locationChanged: locationChanged ?? this.locationChanged,
     archived: archived,
+    importSource: importSource,
+    externalId: externalId,
     history: history ?? this.history,
   );
 }
@@ -249,6 +295,8 @@ final class TimeEntry extends RelocatableRecord {
     this.taskId,
     this.description = '',
     this.billable = false,
+    super.importSource,
+    super.externalId,
     super.history,
   }) : super(parentId: projectId);
 
@@ -274,6 +322,8 @@ final class TimeEntry extends RelocatableRecord {
     'taskId': taskId,
     'description': description,
     'billable': billable,
+    if (importSource != null) 'importSource': importSource,
+    if (externalId != null) 'externalId': externalId,
   };
 
   @override
@@ -297,6 +347,8 @@ final class TimeEntry extends RelocatableRecord {
     taskId: taskId,
     description: description,
     billable: billable,
+    importSource: importSource,
+    externalId: externalId,
     history: history ?? this.history,
   );
 }
@@ -315,6 +367,8 @@ final class RunningTimer extends CirrhyRecord {
     this.projectId,
     this.taskId,
     this.description = '',
+    super.importSource,
+    super.externalId,
     super.history,
   }) : super(id: deviceId);
 
@@ -331,6 +385,8 @@ final class RunningTimer extends CirrhyRecord {
     'projectId': projectId,
     'taskId': taskId,
     'description': description,
+    if (importSource != null) 'importSource': importSource,
+    if (externalId != null) 'externalId': externalId,
   };
 
   @override
@@ -341,10 +397,16 @@ final class RunningTimer extends CirrhyRecord {
     projectId: projectId,
     taskId: taskId,
     description: description,
+    importSource: importSource,
+    externalId: externalId,
     history: history,
   );
 
   /// Closes this timer into a logged entry.
+  ///
+  /// Provenance deliberately does not flow through: the entry records work
+  /// tracked here and now, whatever a (spec-violating) importer may have
+  /// stamped on the timer it came from.
   TimeEntry stopAt(DateTime when, {String? id}) => TimeEntry(
     id: id ?? uuidV4(),
     modified: when,

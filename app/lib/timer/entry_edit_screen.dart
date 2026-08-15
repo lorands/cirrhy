@@ -21,6 +21,7 @@ import '../l10n/duration_format.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.dart';
+import '../widgets/delete_entry_dialog.dart';
 import '../widgets/entity_chip.dart';
 import 'task_picker_sheet.dart';
 
@@ -33,6 +34,13 @@ import 'task_picker_sheet.dart';
 /// read-merge-write demotes whatever was on disk into that record's own
 /// `history` rather than discarding it. This screen never hand-builds a
 /// history list; it only ever reads the one the engine already produced.
+///
+/// A null [entryId] is the manual-add flow — the entry the user forgot to
+/// track and is reconstructing from memory. Same form, but Save mints a new
+/// [TimeEntry] instead of replacing one, and everything that presumes a
+/// stored record (Delete, History, the vanished-record pop) stays out of the
+/// tree. 09 has no board for this; the form is B5's, the affordance that
+/// opens it follows the projects header's + button.
 class EntryEditScreen extends StatefulWidget {
   const EntryEditScreen({
     super.key,
@@ -42,7 +50,9 @@ class EntryEditScreen extends StatefulWidget {
   }) : clock = clock ?? DateTime.now;
 
   final DocumentSession session;
-  final String entryId;
+
+  /// The entry being edited, or null to create a new one.
+  final String? entryId;
 
   /// Where "now" comes from for `modified` timestamps on save/restore.
   /// Overridable for tests, exactly like [DocumentSession]'s own clock.
@@ -71,8 +81,19 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
   void initState() {
     super.initState();
     widget.session.addListener(_onSessionChanged);
-    final entry = widget.session.document.entries[widget.entryId];
-    if (entry != null) _loadFrom(entry);
+    final entryId = widget.entryId;
+    if (entryId == null) {
+      // Manual add: start == stop == now, a deliberately zero-length prefill.
+      // Any guessed duration would read as data and get saved by accident;
+      // 0:00 is honestly wrong, which is what prompts the user to set both
+      // times. Stop is never null here — only a real timer may be open.
+      final now = widget.clock().toUtc();
+      _start = now;
+      _stop = now;
+    } else {
+      final entry = widget.session.document.entries[entryId];
+      if (entry != null) _loadFrom(entry);
+    }
   }
 
   @override
@@ -208,12 +229,31 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
   }
 
   Future<void> _save() async {
-    final current = widget.session.document.entries[widget.entryId];
+    final now = widget.clock().toUtc();
+    final entryId = widget.entryId;
+    if (entryId == null) {
+      final navigator = Navigator.of(context);
+      await widget.session.put(
+        TimeEntry(
+          id: uuidV4(),
+          modified: now,
+          start: _start,
+          stop: _stop,
+          projectId: _projectId,
+          // Born here, so its location was chosen now — not inherited.
+          locationChanged: now,
+          taskId: _taskId,
+          description: _description.text.trim(),
+        ),
+      );
+      navigator.pop();
+      return;
+    }
+    final current = widget.session.document.entries[entryId];
     if (current == null) {
       if (mounted) Navigator.of(context).maybePop();
       return;
     }
-    final now = widget.clock().toUtc();
     final updated = TimeEntry(
       id: current.id,
       modified: now,
@@ -224,6 +264,8 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
       taskId: _taskId,
       description: _description.text.trim(),
       billable: current.billable,
+      importSource: current.importSource,
+      externalId: current.externalId,
       history: current.history,
     );
     final navigator = Navigator.of(context);
@@ -232,29 +274,12 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
   }
 
   Future<void> _confirmDelete() async {
-    final l10n = AppLocalizations.of(context);
-    final colors = CirrhyTheme.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.deleteEntryConfirmTitle),
-        content: Text(l10n.deleteEntryConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.cancelAction),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: colors.danger),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.deleteAction),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+    final entryId = widget.entryId;
+    if (entryId == null) return; // Create mode renders no Delete button.
+    final confirmed = await confirmDeleteEntry(context);
+    if (!confirmed || !mounted) return;
     final navigator = Navigator.of(context);
-    await widget.session.delete(widget.entryId);
+    await widget.session.delete(entryId);
     navigator.pop();
   }
 
@@ -282,6 +307,8 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
       taskId: restoredTaskId,
       description: (fields['description'] as String?) ?? '',
       billable: fields['billable'] == true,
+      importSource: fields['importSource'] as String?,
+      externalId: fields['externalId'] as String?,
       history: current.history,
     );
     await widget.session.put(restored);
@@ -291,12 +318,16 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final entry = widget.session.document.entries[widget.entryId];
+    final entryId = widget.entryId;
+    final entry = entryId == null
+        ? null
+        : widget.session.document.entries[entryId];
 
-    if (entry == null) {
+    if (entryId != null && entry == null) {
       // Deleted out from under us — by this screen's own Delete action, or a
       // merge from another device. Either way there is nothing left to edit;
-      // pop on the next frame rather than mid-build.
+      // pop on the next frame rather than mid-build. A create-mode screen
+      // never lands here: it has no stored record to lose.
       if (!_poppingForMissingEntry) {
         _poppingForMissingEntry = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -307,7 +338,9 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.editEntryTitle)),
+      appBar: AppBar(
+        title: Text(entryId == null ? l10n.addEntryTitle : l10n.editEntryTitle),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(Space.x6),
@@ -377,17 +410,19 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
                 child: Text(l10n.saveAction),
               ),
             ),
-            const SizedBox(height: Space.x4),
-            Center(
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: CirrhyTheme.of(context).danger,
+            if (entry != null) ...[
+              const SizedBox(height: Space.x4),
+              Center(
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: CirrhyTheme.of(context).danger,
+                  ),
+                  onPressed: _confirmDelete,
+                  child: Text(l10n.deleteEntryAction),
                 ),
-                onPressed: _confirmDelete,
-                child: Text(l10n.deleteEntryAction),
               ),
-            ),
-            if (entry.history.isNotEmpty) ...[
+            ],
+            if (entry != null && entry.history.isNotEmpty) ...[
               const SizedBox(height: Space.x6),
               _FieldLabel(l10n.historyLabel),
               const SizedBox(height: Space.x3),

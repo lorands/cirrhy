@@ -98,6 +98,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       color: color ?? project.color,
       billable: project.billable,
       archived: archived ?? project.archived,
+      importSource: project.importSource,
+      externalId: project.externalId,
       history: project.history,
     );
   }

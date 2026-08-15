@@ -76,6 +76,8 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         modified: widget.clock().toUtc(),
         name: name,
         archived: client.archived,
+        importSource: client.importSource,
+        externalId: client.externalId,
         history: client.history,
       ),
     );
@@ -89,6 +91,8 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         modified: widget.clock().toUtc(),
         name: client.name,
         archived: true,
+        importSource: client.importSource,
+        externalId: client.externalId,
         history: client.history,
       ),
     );

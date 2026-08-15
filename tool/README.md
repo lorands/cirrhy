@@ -102,6 +102,22 @@ a development team before `--release` means anything. Two target-specific
 flags exist for that — `tool/target-android.sh --aab` for the Play Console
 format, and `tool/target-ios.sh --codesign` once a team is set.
 
+## Desktop integration on Linux
+
+```sh
+tool/install-linux.sh               # newest built bundle, release preferred
+tool/install-linux.sh --debug       # pin the mode instead
+tool/install-linux.sh --uninstall
+```
+
+Installs the generated `.desktop` entry and hicolor icons into
+`~/.local/share`, with `Exec` pointing at the built bundle where it lies. This
+is what puts Cirrhy's own icon on the taskbar: a Wayland compositor never asks
+a window for its icon — it matches the window's app id against installed
+`.desktop` files, and without a match KDE and GNOME show the generic cog. The
+match covers every launch of the app id, `flutter run` dev sessions included.
+The bundle is not copied; re-run after moving the repo.
+
 ## Signing for iOS
 
 ```sh
@@ -140,6 +156,8 @@ because the bookmark lives in the app's preferences.
 tool/gen_app_icons.py
 ```
 
-Regenerates every platform's app icon from `assets/logo/cirrhy-mark.svg`. See
-the script's header and the App icons section of `CLAUDE.md` — the geometry
-comes from Penpot and is not to be nudged by hand.
+Regenerates every platform's app icon from `assets/logo/cirrhy-mark.svg`,
+including the running-timer companions (the badged icons for the Linux and
+macOS swap, Windows' overlay dot, Android's notification glyph). See the
+script's header and the App icons section of `CLAUDE.md` — the geometry comes
+from Penpot and is not to be nudged by hand.

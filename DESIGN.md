@@ -154,19 +154,19 @@ The user says where the document lives. That question is asked at first run and 
 
 **First run asks, and the app waits for the answer.** Offering a working default instead — app-private, labelled as not synced, relocate later — was considered and dropped. It reads as the friendlier option and is worse in two concrete ways. The app-private container path is not stable across an iOS reinstall or restore, so the location chosen to be the safe temporary one is the only one that can silently move out from under the handle. And a default that is not synced quietly opts the user out of the single promise the product makes, in the one moment they were paying attention to the question. The picker is three taps; the gate is honest.
 
-**Backups are not a second path question.** Take an automatic pre-write copy into app-private storage — §4.2's fallback rule, worth applying always rather than only when directory scope is unavailable — invisible and unasked. A "keep backups beside the file" toggle can live in settings, off by default. It does not belong on the first-run screen: asking twice before the app has been used once, for something nobody looks at until after something has gone wrong, buys a worse first launch and no safety.
+**Backups are not a second path question.** Take an automatic pre-write copy into app-private storage — §4.2's fallback rule, worth applying always rather than only when directory scope is unavailable — invisible and unasked. Beside-the-file backups exist too, but as a manual "back up now" action rather than the toggle originally sketched here — §11, which also settles what restoring one means. It does not belong on the first-run screen: asking twice before the app has been used once, for something nobody looks at until after something has gone wrong, buys a worse first launch and no safety.
 
 ---
 
-## 5. File format — **Proposed**
+## 5. File format — **Decided** (2026-08-14): JSON
 
-A whole-document format — JSON or CBOR, optionally compressed — loaded entirely into memory.
+A whole-document format loaded entirely into memory, encoded as JSON (`JsonDocumentCodec`), uncompressed.
 
 **Avoid SQLite**, despite it being nominally a single file. WAL mode adds `-wal` and `-shm` sidecars and rollback journals add `-journal`; these break the single-file promise and corrupt the database when a sync client copies the main file without them. Whole-document also matches the merge model, since merging two SQLite files is manual work.
 
 Size is not a concern: a heavy user generates a few thousand entries a year.
 
-**Open:** JSON (diffable, debuggable, git-friendly) vs CBOR (compact, faster). JSON is probably the better default for an OSS project where users may want to inspect or repair their own data.
+**JSON over CBOR**, settled while deciding §10. Size and speed were already immaterial at this scale; what settled it is that §10 makes the file format the product's one public seam: import is defined as "something that has never seen this codebase produces a valid document from a written spec", and §5 always valued users being able to inspect and repair their own data. Both of those are sentences about JSON. CBOR would put a binary encoder between every importing agent — and every hand repair — and the file, to save kilobytes nobody is short of. The `DocumentCodec` interface and `knownDocumentFileNames` stay: a future format change remains *possible*, it is just no longer *pending*.
 
 ---
 
@@ -219,11 +219,11 @@ Ecosystems that don't use reverse-DNS aren't bound: a Rust crate is `cirrhy`, a 
 ## 8. Open questions
 
 1. ~~Confirm the stack (§6).~~ **Resolved 2026-08-13: Flutter.**
-2. **JSON vs CBOR** (§5). JSON is implemented behind a `DocumentCodec` interface, so switching does not reach into the merge engine. Decide before the format ships to a real user, since it changes the on-disk file.
+2. ~~**JSON vs CBOR** (§5).~~ **Resolved 2026-08-14: JSON**, settled by §10 making the file format the import seam — a spec an outside agent writes against wants a text format, and simplicity won. The `DocumentCodec` interface stays as the escape hatch.
 3. **Whether to encrypt the file.** KDBX is encrypted because it holds secrets; time-tracking data may not warrant it. Encryption would complicate inspection and repair. Probably no, but decide explicitly.
 4. **Timezone and DST handling** — not yet considered, and material for a time tracker. Storing UTC instants plus the originating timezone is the likely answer; entries spanning a DST transition are the test case.
 5. ~~**Directory scope vs file scope** (§4.2).~~ **Resolved 2026-08-13: directory scope**, forced by the location picker (§4.6), which is the thing that asks the OS for one or the other. Atomic writes and beside-the-file backups both need a sibling temp.
-6. **Import from other trackers** (§10) — the shape of the seam, not whether to have one.
+6. ~~**Import from other trackers** (§10).~~ **Resolved 2026-08-14** — see §10: a one-time, agent-driven migration through the file format itself, made safe by provenance fields and batch rollback rather than by review or engine-level dedup. The remaining work there is the spec (JSON Schema + agent-facing Markdown) and the two record fields, not a decision.
 
 ## 9. First thing to build — **done** (2026-08-13)
 
@@ -241,21 +241,49 @@ Still to do: an age limit on tombstones (currently only pruned when a record out
 
 ---
 
-## 10. Import from other trackers — **Open** (raised 2026-08-13)
+## 10. Import from other trackers — **Decided** (2026-08-14; raised 2026-08-13)
 
 Cirrhy exists because Clockify/Toggl/Kimai were unsatisfying, so its users arrive with history in one of them. There has to be a way in.
 
-**Cirrhy should not carry per-vendor importers.** Each one is a CSV/JSON dialect that changes without notice, for a single-user app that will see each migration once. Instead, expose one solid, well-documented way to get records in, and let an agent — Claude or equivalent — do the vendor-specific mapping from whatever the source exports. That is the kind of one-off, schema-guessing work an agent is genuinely good at, and it keeps five vendor parsers out of a codebase whose merge engine is the thing that must stay trustworthy.
+**Cirrhy carries no per-vendor importers — and no import code at all: the seam is the file format itself.** Each vendor importer is a CSV/JSON dialect that changes without notice, for a single-user app that sees each migration once. Instead, an agent — Claude or equivalent — reads the source's export, makes the vendor-specific mapping judgements, and writes valid Cirrhy records into the live document; the ordinary read-merge-write picks them up exactly as it would another device's edits. That is one-off schema-guessing work an agent is genuinely good at, and it keeps vendor parsers out of a codebase whose merge engine is the thing that must stay trustworthy. The **embedded MCP server** alternative is rejected: a server inside an offline single-user app, against §4's no-network rule, doing a job the format already does.
 
-What that costs us is documentation quality: the seam only works if the format and the entity model are specified well enough for something that has never seen the code to produce a valid document. That spec is the deliverable, more than any code.
+The rest was settled in a design grilling on 2026-08-14. The load-bearing realisation: **one-time means one successful migration, not one attempt** — first mappings are often wrong, so the design must survive a botched run. Everything below favors *recovery* over *prevention*:
 
-An **embedded MCP server** was the other idea, and is probably overkill: it means shipping a server inside an offline single-user app, and it sits awkwardly against §4's rule that Cirrhy contains no network code. A documented file format plus the existing read-merge-write path may already be the whole feature — import becomes "produce a valid Cirrhy document, then merge it", which is a code path we already have and already test.
+- **Import is a one-time migration, not a recurring sync.** Periodic re-import was considered and dropped; nobody migrates monthly, and designing for it (source-derived record IDs, source-derived `modified` stamps, so a re-run corrects instead of duplicates or clobbers) buys nothing the real use case needs.
+- **Two provenance fields, on every record type, populated only by import:** `importSource`, a free string naming the origin (e.g. `kimai - truenas`), and `externalId`, the source's own identifier (compound if the source needs it). They exist on all record types deliberately — the mapping error that actually hurts is the client/project *hierarchy*, so the tree must be as traceable as the entries. **Neither field is a merge key.** The record `id` stays a fresh UUID, merge stays a union over UUIDs, and the engine never learns these fields mean anything: §3's invariants are untouched, and no uniqueness validation exists or should.
+- **Retry protocol: tombstone the batch, re-import fresh.** Delete every record whose `importSource` matches, then run the corrected import. File-level undo (restoring a pre-import backup) is impossible by construction the moment the bad import has merged onto a second device — union-over-UUIDs merges it straight back — so rollback has to be record-level, and the tombstones are also what stop other devices resurrecting attempt one (§3.3). The agent performs the rollback through the format; zero app surface. Two caveats that belong in the spec: rollback takes with it any hand-edits made to imported records (a tombstone kills the record's history too), so verify an import before editing what it brought in; and rollback rides on tombstones, so §9's still-open tombstone age limit bounds how long a rolled-back batch stays dead for a long-offline device.
+- **No review-before-merge.** The agent writes straight into the live file; review is post-hoc, in the app. What is worth reviewing is the dozen-line client/project mapping, never the 3,000 entries, and batch rollback is the undo. A staging step would add surface without adding protection recoverability doesn't already give — for a single user, the same eyes review on every device.
+- **Enforcement is recoverability, not validation.** The agent is *prescribed* — not engine-enforced — to stamp the provenance fields. Prompt compliance would be an unacceptable guard against silent corruption; it is an acceptable guard when the failure is visible and the recovery is cheap.
 
-Open, and to settle before it is built:
+**The deliverable is the spec, more than any code**: it only works if the format and entity model are specified well enough for something that has never seen this codebase to produce a valid document. Concretely, two artifacts, versioned with `packages/cirrhy_merge` and kept in step with it:
 
-- **Whether the seam is the file format or an API.** If it is the format (§5), import is just `merge`, and §3's commutativity means a bad import can be re-run rather than undone. That is the cheap answer and the one to disprove before considering anything larger.
-- **Re-import must not duplicate.** Records are identified by UUID (§3.1), and a vendor export carries none. Importing the same export twice would mint fresh UUIDs and double every entry. Some stable mapping from the source's own ID to ours has to exist, or import has to be defined as a one-time operation and enforced as one.
-- **Where the mapping lives.** Client/project/task hierarchies differ between vendors; a Toggl project may be a Cirrhy client. That judgement is the agent's job, but the result has to land in something reviewable before it is merged into real data.
+- a **JSON Schema** for the document format, so an importer can machine-validate its output before writing;
+- an **agent-facing Markdown spec** (llms-file style): the entity model (clients → projects → tasks, entries, tombstones, per-device running timers), the field and timestamp rules an importer must respect, the provenance-field rules, and the retry protocol above.
+
+Built 2026-08-14: the fields live on every record type in `packages/cirrhy_merge` (formatVersion 2 — a v1 reader would silently strip them, the exact lossy write-back the version gate exists to refuse), and the two documents live in `packages/cirrhy_merge/doc/` (`cirrhy-document.schema.json`, `llms.md`). A schema-sync test in the package compares the schema's field lists against what the codec actually emits, so the spec cannot drift from the code unnoticed.
+
+---
+
+## 11. Backups and archiving — **Decided** (2026-08-15)
+
+Settled in a design grilling on 2026-08-15 that started from an archive proposal and ended somewhere smaller and sounder. The through-line: **every file-level manipulation of history is defeated by our own merge engine.** §2's "this cannot be solved at the file layer" applies to the app's maintenance features exactly as it applies to sync clients.
+
+**Manual backup — Decided.** A user-triggered action copies the committed document to `cirrhy-backup-YYYY-MM-DD.json` beside it (directory scope, §4.2, is what makes the sibling write possible). Mechanics:
+
+- The copy is the **on-disk bytes after the commit queue has flushed** — a snapshot of what is durably true, never a re-serialization of in-memory state.
+- A second backup on the same day gets a `-2`, `-3` suffix rather than overwriting: overwriting would silently destroy a snapshot the user deliberately took.
+- Backup files are **inert to the app**: never in `knownDocumentFileNames`, never adopted by the §4.6 rule, never read, and **never deleted**. The app writes backups and touches nothing else in the user's folder.
+- The natural moment for one is immediately before an agent-driven import (§10): the backup is then the record-level recovery source for anything batch rollback doesn't cover.
+
+**Restore is record-level, through the format — Decided.** A backup is a *source document*, not a rollback button. Recovery means opening the backup and writing the destroyed records back into the live document with **fresh `modified` timestamps**, so they out-date the tombstones or bad edits that killed them and every device converges through ordinary merge — §10's rollback protocol run in reverse, zero coordination, zero app surface; an agent job through the format, like import itself.
+
+> Considered and **rejected: restore by copying a backup over `cirrhy.json`.** It only works if every device stays silent until sync has fully propagated — a distributed protocol no user can execute (the phone in a pocket, the laptop in a drawer), and the file layer is exactly where §2 says coordination is unsolvable. The failure mode is the bad kind: the restore visibly succeeds, then days later an offline device's newer tombstones merge back in and the restored records silently die again, long after anyone remembers why. Never document file-copy restore as a recovery procedure.
+
+> Considered and **rejected: archiving old records into a second file** (move everything before a date to `cirrhy-archive.json`). Without tombstones, the next save from any device that still holds the records resurrects all of them (§3.3) — an archive that undoes itself in a day. With tombstones, the live file keeps a permanent tombstone per archived record, and §9's still-open tombstone age limit becomes a resurrection deadline: one device offline longer than the limit merges the *entire archived history* back, silently. The archive file itself would sit outside read-merge-write and be blind-written — a second live document with none of the machinery that makes the first one safe. And reports would stop seeing archived periods, when reporting over an arbitrary timespan is first-class (§1). All of that to shrink a file §5 already establishes never gets big enough to matter. If old entries ever clutter the UI, the fix is a date filter in queries, not a storage feature.
+
+Built 2026-08-15, with no platform code at all: the §4.1 channel was already generic over file names, so the port only grew a `existingFiles(names)` query and a named-sibling variant of `storeAt`. `DocumentSession.backUpNow()` runs on the commit queue (which is what delivers the flushed-bytes promise), and the settings screen's Data folder section carries the button. Covered headless in `document_session_backup_test.dart` and at the widget level in `settings_screen_test.dart`.
+
+> Considered and **rejected: automatic backups on a schedule with keep-N retention** (`cirrhy-automatic-backup-YYYY-MM-DD.json`). Retention makes the app delete files from the user's synced folder — the line §4.6 deliberately refuses to cross, here crossed silently on a timer with every deletion propagated by the sync client. Worse, two devices on the same schedule blind-write the same filename; the sync client resolves that collision by renaming one to a conflict name the retention pattern no longer matches, so the folder accumulates undeletable sediment while retention prunes only the tidy names — unbounded growth caused by the feature meant to bound it. Making it safe needs per-device filenames plus the app pattern-deleting its own artifacts, which is real machinery serving a need the every-save app-private backup (§4.6) and the sync service's own versioning (Dropbox history, Syncthing versioning) already cover.
 
 ---
 

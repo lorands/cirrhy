@@ -15,6 +15,7 @@
 import 'package:flutter/material.dart';
 
 import '../about/version.dart';
+import '../data/document_session.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../storage/document_directory.dart';
 import '../storage/document_location.dart';
@@ -43,6 +44,7 @@ class SettingsScreen extends StatefulWidget {
     required this.locationPreference,
     required this.directory,
     this.themePreference,
+    this.session,
     this.firstRun = false,
     this.onContinue,
   });
@@ -50,6 +52,12 @@ class SettingsScreen extends StatefulWidget {
   final LocalePreference localePreference;
   final DocumentLocationPreference locationPreference;
   final DocumentDirectory directory;
+
+  /// The open session, which is what the manual backup (DESIGN.md §11) runs
+  /// through — the copy has to queue behind every pending save. Null on first
+  /// run, where no document exists to copy yet, and in tests that do not
+  /// exercise the backup row; the row simply stays away.
+  final DocumentSession? session;
 
   /// Null in tests that do not exercise theming, and during first run, where
   /// the reduced content never shows the Appearance row anyway. When present,
@@ -75,9 +83,15 @@ class SettingsScreen extends StatefulWidget {
 /// What to say under the folder, if anything.
 enum _Note { none, willCreate, willAdopt, unavailable, pickFailed }
 
+/// What to say under the backup button, if anything.
+enum _BackupNote { none, saved, nothingYet, failed }
+
 class _SettingsScreenState extends State<SettingsScreen> {
   _Note _note = _Note.none;
   bool _picking = false;
+  _BackupNote _backupNote = _BackupNote.none;
+  String? _backupName;
+  bool _backingUp = false;
 
   @override
   void initState() {
@@ -119,6 +133,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _backUp() async {
+    final session = widget.session;
+    if (session == null) return;
+    setState(() {
+      _backingUp = true;
+      _backupNote = _BackupNote.none;
+    });
+    try {
+      final name = await session.backUpNow();
+      if (!mounted) return;
+      setState(() {
+        _backupName = name;
+        _backupNote = name == null ? _BackupNote.nothingYet : _BackupNote.saved;
+      });
+    } on Object {
+      // Includes DocumentLocationUnavailable. A backup that cannot be written
+      // costs nothing but this note — the document itself is untouched.
+      if (mounted) setState(() => _backupNote = _BackupNote.failed);
+    } finally {
+      if (mounted) setState(() => _backingUp = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -127,6 +164,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       note: _note,
       busy: _picking,
       onPick: _picking ? null : _pick,
+      // No backup row before a folder is chosen: there is no file to copy
+      // and no folder to copy it into. First run never passes a session.
+      onBackUp: widget.session == null || !widget.locationPreference.isChosen
+          ? null
+          : _backUp,
+      backingUp: _backingUp,
+      backupNote: _backupNote,
+      backupName: _backupName,
     );
 
     // First run's content is deliberately reduced — no Appearance, no About,
@@ -232,12 +277,23 @@ class _StorageSection extends StatelessWidget {
     required this.note,
     required this.busy,
     required this.onPick,
+    required this.onBackUp,
+    required this.backingUp,
+    required this.backupNote,
+    required this.backupName,
   });
 
   final DocumentLocation? location;
   final _Note note;
   final bool busy;
   final VoidCallback? onPick;
+
+  /// Null hides the backup row entirely — first run, or no session to queue
+  /// the copy behind.
+  final VoidCallback? onBackUp;
+  final bool backingUp;
+  final _BackupNote backupNote;
+  final String? backupName;
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +350,82 @@ class _StorageSection extends StatelessWidget {
           const SizedBox(height: Space.x3),
           _NoteLine(note: note),
         ],
+        if (onBackUp != null) ...[
+          const SizedBox(height: Space.x4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.backupDescription,
+                  style: text.labelSmall?.copyWith(color: colors.textSecondary),
+                ),
+              ),
+              const SizedBox(width: Space.x3),
+              if (backingUp)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                OutlinedButton(
+                  onPressed: onBackUp,
+                  child: Text(l10n.backupNow),
+                ),
+            ],
+          ),
+          if (backupNote != _BackupNote.none) ...[
+            const SizedBox(height: Space.x3),
+            _BackupNoteLine(note: backupNote, name: backupName),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+/// The line under the backup button, in the shape of [_NoteLine] above it.
+class _BackupNoteLine extends StatelessWidget {
+  const _BackupNoteLine({required this.note, required this.name});
+
+  final _BackupNote note;
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final colors = CirrhyTheme.of(context);
+    final text = Theme.of(context).textTheme;
+
+    final (String message, Color tone, IconData icon) = switch (note) {
+      // The file name is the message: it is what the user will look for in
+      // their folder, and what they would quote when restoring from it.
+      _BackupNote.saved => (
+        l10n.backupSavedAs(name ?? ''),
+        colors.info,
+        Icons.check,
+      ),
+      _BackupNote.nothingYet => (
+        l10n.backupNothingYet,
+        colors.warning,
+        Icons.info_outline,
+      ),
+      _BackupNote.failed => (
+        l10n.backupFailed,
+        colors.danger,
+        Icons.error_outline,
+      ),
+      _BackupNote.none => ('', colors.textMuted, Icons.info_outline),
+    };
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: tone),
+        const SizedBox(width: Space.x2),
+        Expanded(
+          child: Text(message, style: text.labelSmall?.copyWith(color: tone)),
+        ),
       ],
     );
   }

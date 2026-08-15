@@ -68,21 +68,30 @@ final class ChannelDocumentDirectory implements DocumentDirectory {
   }
 
   @override
-  Future<List<String>> existingDocuments(DocumentLocation location) async {
+  Future<List<String>> existingDocuments(DocumentLocation location) =>
+      existingFiles(location, knownDocumentFileNames);
+
+  @override
+  Future<List<String>> existingFiles(
+    DocumentLocation location,
+    List<String> names,
+  ) async {
     try {
-      final names = await channel.invokeListMethod<String>('listDocuments', {
+      final found = await channel.invokeListMethod<String>('listDocuments', {
         'handle': location.handle,
-        'names': knownDocumentFileNames,
+        'names': names,
       });
-      return names ?? const <String>[];
+      return found ?? const <String>[];
     } on PlatformException catch (e) {
       throw _translate(e, location);
     }
   }
 
   @override
-  DocumentStore storeAt(DocumentLocation location) =>
-      ChannelDocumentStore(location);
+  DocumentStore storeAt(
+    DocumentLocation location, {
+    String fileName = documentFileName,
+  }) => ChannelDocumentStore(location, fileName: fileName);
 }
 
 /// Reads and writes one document through the platform channel.

@@ -15,10 +15,12 @@
 import Flutter
 import UIKit
 import UniformTypeIdentifiers
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var folders: DocumentFolders?
+  private var badge: TimerBadge?
 
   override func application(
     _ application: UIApplication,
@@ -36,6 +38,48 @@ import UniformTypeIdentifiers
     self.folders = folders
     FlutterMethodChannel(name: DocumentFolders.channelName, binaryMessenger: messenger)
       .setMethodCallHandler { call, result in folders.handle(call, result: result) }
+
+    let badge = TimerBadge()
+    self.badge = badge
+    FlutterMethodChannel(name: TimerBadge.channelName, binaryMessenger: messenger)
+      .setMethodCallHandler { call, result in badge.handle(call, result: result) }
+  }
+}
+
+/// The iOS half of the running-timer badge (TimerBadge on the Dart side).
+///
+/// iOS offers exactly one icon adornment, the numeric badge, and gates it
+/// behind notification authorization. So a running timer is badge "1", asked
+/// for with `.badge` alone the first time a timer starts — that prompt is the
+/// OS's, shown once; after a refusal the timer keeps running and only the
+/// badge goes missing. Clearing needs no authorization.
+final class TimerBadge: NSObject {
+  static let channelName = "com.lorands.cirrhy/badge"
+
+  func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard call.method == "setTimer" else {
+      result(FlutterMethodNotImplemented)
+      return
+    }
+    let arguments = call.arguments as? [String: Any] ?? [:]
+    if arguments["running"] as? Bool ?? false {
+      UNUserNotificationCenter.current().requestAuthorization(options: [.badge]) {
+        granted, _ in
+        guard granted else { return }
+        DispatchQueue.main.async { Self.apply(1) }
+      }
+    } else {
+      Self.apply(0)
+    }
+    result(nil)
+  }
+
+  private static func apply(_ count: Int) {
+    if #available(iOS 16.0, *) {
+      UNUserNotificationCenter.current().setBadgeCount(count)
+    } else {
+      UIApplication.shared.applicationIconBadgeNumber = count
+    }
   }
 }
 

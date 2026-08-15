@@ -104,6 +104,29 @@
   "@storagePickFailed": {
     "description": "Shown when the folder picker returned something the app cannot use. Rare, and not the user's fault — avoid blaming wording."
   },
+  "backupDescription": "Keep a dated copy of your file, right beside it.",
+  "@backupDescription": {
+    "description": "Explanatory text next to the manual backup button in the data folder section (E1). The copy lands in the same chosen folder as the document itself (DESIGN.md §11)."
+  },
+  "backupNow": "Back up now",
+  "@backupNow": {
+    "description": "Button that writes a dated copy of the document into the chosen folder, e.g. cirrhy-backup-2026-08-15.json."
+  },
+  "backupSavedAs": "Backup saved as {name}.",
+  "@backupSavedAs": {
+    "description": "Confirmation under the backup button. name is the file name that was written, e.g. cirrhy-backup-2026-08-15.json — shown so the user knows what to look for in their folder.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "backupNothingYet": "There is nothing to back up yet — the file has not been created.",
+  "@backupNothingYet": {
+    "description": "Shown when the backup button is pressed before the document file exists on disk, which can only happen before the first save."
+  },
+  "backupFailed": "The backup could not be written. Check that the folder is reachable.",
+  "@backupFailed": {
+    "description": "Shown when writing the backup copy failed — usually because the folder has become unreachable. The document itself is untouched."
+  },
   "tabTimer": "Timer",
   "@tabTimer": {
     "description": "Label for the Timer destination in the app's bottom tab bar or side rail — the main screen with the running timer and recent entries."
@@ -135,6 +158,14 @@
   "timerRunning": "Running",
   "@timerRunning": {
     "description": "Small status label next to a coloured dot on the timer card, shown while this device's timer is running."
+  },
+  "timerBadgeTitle": "Timer running",
+  "@timerBadgeTitle": {
+    "description": "Title of the Android notification shown while this device's timer is running; it is what puts the badge on the launcher icon. The notification renders the elapsed time itself, so this must not mention a duration."
+  },
+  "timerBadgeChannelName": "Running timer",
+  "@timerBadgeChannelName": {
+    "description": "Name of the Android notification channel the running-timer notification files under, shown in the system's notification settings for the app. A category name, not a status line."
   },
   "timerNoDescription": "(no description)",
   "@timerNoDescription": {
@@ -207,6 +238,14 @@
   "editEntryTitle": "Edit entry",
   "@editEntryTitle": {
     "description": "App bar title of the entry-edit screen (B5), opened by tapping a logged entry in the timer list."
+  },
+  "addEntryTitle": "Add entry",
+  "@addEntryTitle": {
+    "description": "App bar title of the same entry screen when it is creating a new entry from scratch — the manual-add flow for time the user forgot to track — rather than editing a logged one."
+  },
+  "addEntryTooltip": "Add an entry manually",
+  "@addEntryTooltip": {
+    "description": "Tooltip on the + button in the timer screen's header that opens the entry screen in its add-new mode."
   },
   "descriptionLabel": "Description",
   "@descriptionLabel": {

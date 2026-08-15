@@ -1,5 +1,7 @@
 #include "my_application.h"
 
+#include <string.h>
+
 #include <flutter_linux/flutter_linux.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -10,9 +12,64 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  GtkWindow* window;
+  FlMethodChannel* badge_channel;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
+
+// The running-timer badge, Linux edition. There is no portable "badge my
+// icon" API, so this does the two things that exist:
+//
+//  - Swaps the window icon between the plain and the -running name from the
+//    bundled hicolor tree. X11 taskbars show it; Wayland ignores window
+//    icons entirely.
+//  - Emits the com.canonical.Unity.LauncherEntry Update signal. KDE Plasma's
+//    task manager and most docks (Dash to Dock included) render it as a
+//    badge on the launcher — provided the .desktop file is installed where
+//    the shell can see it, which is tool/install-linux.sh's job.
+static void set_badge(MyApplication* self, gboolean running) {
+  if (self->window != nullptr) {
+    gtk_window_set_icon_name(
+        self->window, running ? APPLICATION_ID "-running" : APPLICATION_ID);
+  }
+
+  g_autoptr(GDBusConnection) bus =
+      g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, nullptr);
+  if (bus == nullptr) {
+    return;
+  }
+  GVariantBuilder properties;
+  g_variant_builder_init(&properties, G_VARIANT_TYPE("a{sv}"));
+  g_variant_builder_add(&properties, "{sv}", "count",
+                        g_variant_new_int64(1));
+  g_variant_builder_add(&properties, "{sv}", "count-visible",
+                        g_variant_new_boolean(running));
+  g_dbus_connection_emit_signal(
+      bus, nullptr, "/com/lorands/cirrhy",
+      "com.canonical.Unity.LauncherEntry", "Update",
+      g_variant_new("(sa{sv})", "application://" APPLICATION_ID ".desktop",
+                    &properties),
+      nullptr);
+}
+
+// Handles com.lorands.cirrhy/badge calls from TimerBadge on the Dart side.
+static void badge_method_cb(FlMethodChannel* channel,
+                            FlMethodCall* method_call, gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  if (strcmp(fl_method_call_get_name(method_call), "setTimer") != 0) {
+    fl_method_call_respond_not_implemented(method_call, nullptr);
+    return;
+  }
+  FlValue* args = fl_method_call_get_args(method_call);
+  FlValue* running = fl_value_get_type(args) == FL_VALUE_TYPE_MAP
+                         ? fl_value_lookup_string(args, "running")
+                         : nullptr;
+  set_badge(self, running != nullptr &&
+                      fl_value_get_type(running) == FL_VALUE_TYPE_BOOL &&
+                      fl_value_get_bool(running));
+  fl_method_call_respond_success(method_call, nullptr, nullptr);
+}
 
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
@@ -48,6 +105,10 @@ static void my_application_activate(GApplication* application) {
 
   add_bundled_icon_search_path();
   gtk_window_set_icon_name(window, APPLICATION_ID);
+  // Weak: set_badge must not touch a window the user already closed.
+  self->window = window;
+  g_object_add_weak_pointer(G_OBJECT(window),
+                            reinterpret_cast<gpointer*>(&self->window));
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
@@ -99,6 +160,13 @@ static void my_application_activate(GApplication* application) {
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
 
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  self->badge_channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "com.lorands.cirrhy/badge", FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(self->badge_channel,
+                                            badge_method_cb, self, nullptr);
+
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
 
@@ -145,6 +213,7 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  g_clear_object(&self->badge_channel);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 

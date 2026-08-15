@@ -154,7 +154,7 @@ The user says where the document lives. That question is asked at first run and 
 
 **First run asks, and the app waits for the answer.** Offering a working default instead — app-private, labelled as not synced, relocate later — was considered and dropped. It reads as the friendlier option and is worse in two concrete ways. The app-private container path is not stable across an iOS reinstall or restore, so the location chosen to be the safe temporary one is the only one that can silently move out from under the handle. And a default that is not synced quietly opts the user out of the single promise the product makes, in the one moment they were paying attention to the question. The picker is three taps; the gate is honest.
 
-**Backups are not a second path question.** Take an automatic pre-write copy into app-private storage — §4.2's fallback rule, worth applying always rather than only when directory scope is unavailable — invisible and unasked. A "keep backups beside the file" toggle can live in settings, off by default. It does not belong on the first-run screen: asking twice before the app has been used once, for something nobody looks at until after something has gone wrong, buys a worse first launch and no safety.
+**Backups are not a second path question.** Take an automatic pre-write copy into app-private storage — §4.2's fallback rule, worth applying always rather than only when directory scope is unavailable — invisible and unasked. Beside-the-file backups exist too, but as a manual "back up now" action rather than the toggle originally sketched here — §11, which also settles what restoring one means. It does not belong on the first-run screen: asking twice before the app has been used once, for something nobody looks at until after something has gone wrong, buys a worse first launch and no safety.
 
 ---
 
@@ -261,6 +261,27 @@ The rest was settled in a design grilling on 2026-08-14. The load-bearing realis
 - an **agent-facing Markdown spec** (llms-file style): the entity model (clients → projects → tasks, entries, tombstones, per-device running timers), the field and timestamp rules an importer must respect, the provenance-field rules, and the retry protocol above.
 
 Built 2026-08-14: the fields live on every record type in `packages/cirrhy_merge` (formatVersion 2 — a v1 reader would silently strip them, the exact lossy write-back the version gate exists to refuse), and the two documents live in `packages/cirrhy_merge/doc/` (`cirrhy-document.schema.json`, `llms.md`). A schema-sync test in the package compares the schema's field lists against what the codec actually emits, so the spec cannot drift from the code unnoticed.
+
+---
+
+## 11. Backups and archiving — **Decided** (2026-08-15)
+
+Settled in a design grilling on 2026-08-15 that started from an archive proposal and ended somewhere smaller and sounder. The through-line: **every file-level manipulation of history is defeated by our own merge engine.** §2's "this cannot be solved at the file layer" applies to the app's maintenance features exactly as it applies to sync clients.
+
+**Manual backup — Decided.** A user-triggered action copies the committed document to `cirrhy-backup-YYYY-MM-DD.json` beside it (directory scope, §4.2, is what makes the sibling write possible). Mechanics:
+
+- The copy is the **on-disk bytes after the commit queue has flushed** — a snapshot of what is durably true, never a re-serialization of in-memory state.
+- A second backup on the same day gets a `-2`, `-3` suffix rather than overwriting: overwriting would silently destroy a snapshot the user deliberately took.
+- Backup files are **inert to the app**: never in `knownDocumentFileNames`, never adopted by the §4.6 rule, never read, and **never deleted**. The app writes backups and touches nothing else in the user's folder.
+- The natural moment for one is immediately before an agent-driven import (§10): the backup is then the record-level recovery source for anything batch rollback doesn't cover.
+
+**Restore is record-level, through the format — Decided.** A backup is a *source document*, not a rollback button. Recovery means opening the backup and writing the destroyed records back into the live document with **fresh `modified` timestamps**, so they out-date the tombstones or bad edits that killed them and every device converges through ordinary merge — §10's rollback protocol run in reverse, zero coordination, zero app surface; an agent job through the format, like import itself.
+
+> Considered and **rejected: restore by copying a backup over `cirrhy.json`.** It only works if every device stays silent until sync has fully propagated — a distributed protocol no user can execute (the phone in a pocket, the laptop in a drawer), and the file layer is exactly where §2 says coordination is unsolvable. The failure mode is the bad kind: the restore visibly succeeds, then days later an offline device's newer tombstones merge back in and the restored records silently die again, long after anyone remembers why. Never document file-copy restore as a recovery procedure.
+
+> Considered and **rejected: archiving old records into a second file** (move everything before a date to `cirrhy-archive.json`). Without tombstones, the next save from any device that still holds the records resurrects all of them (§3.3) — an archive that undoes itself in a day. With tombstones, the live file keeps a permanent tombstone per archived record, and §9's still-open tombstone age limit becomes a resurrection deadline: one device offline longer than the limit merges the *entire archived history* back, silently. The archive file itself would sit outside read-merge-write and be blind-written — a second live document with none of the machinery that makes the first one safe. And reports would stop seeing archived periods, when reporting over an arbitrary timespan is first-class (§1). All of that to shrink a file §5 already establishes never gets big enough to matter. If old entries ever clutter the UI, the fix is a date filter in queries, not a storage feature.
+
+> Considered and **rejected: automatic backups on a schedule with keep-N retention** (`cirrhy-automatic-backup-YYYY-MM-DD.json`). Retention makes the app delete files from the user's synced folder — the line §4.6 deliberately refuses to cross, here crossed silently on a timer with every deletion propagated by the sync client. Worse, two devices on the same schedule blind-write the same filename; the sync client resolves that collision by renaming one to a conflict name the retention pattern no longer matches, so the folder accumulates undeletable sediment while retention prunes only the tidy names — unbounded growth caused by the feature meant to bound it. Making it safe needs per-device filenames plus the app pattern-deleting its own artifacts, which is real machinery serving a need the every-save app-private backup (§4.6) and the sync service's own versioning (Dropbox history, Syncthing versioning) already cover.
 
 ---
 

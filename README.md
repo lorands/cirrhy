@@ -206,6 +206,35 @@ rollback takes edits made to the batch with it. And this is not theory — a
 year of real Kimai history, 211 entries, came across in exactly one such
 conversation.
 
+## Reporting beyond the app
+
+The Reports screen covers the everyday questions. Past it — arbitrary
+pivots, charts, spreadsheets for a client, "which project ate my March?" —
+Cirrhy deliberately ships no report builder. The same two files that make
+the format the import seam make it the *reporting* seam: hand an agent your
+`cirrhy.json` and ask, and it has everything it needs to answer correctly.
+
+> Build a billable timesheet for Meridian Labs, Q2 2026, from my Cirrhy
+> document at `~/Sync/cirrhy/cirrhy.json`, as an `.xlsx` — a summary by
+> project and task, plus the full entry list.
+
+[docs/reporting](docs/reporting) holds a full-size example document
+(21 months, ~1,400 entries, the shape a real file accumulates) and three
+artifacts produced from it exactly that way — two charts and a spreadsheet,
+each shown with the prompt that made it:
+
+<p align="center">
+  <img src="docs/reporting/weekly-rhythm.png" width="800" alt="Heatmap of tracked hours by weekday and hour of day, produced by an agent from the example document">
+</p>
+
+For Claude there is a packaged skill,
+[`.claude/skills/cirrhy-report`](.claude/skills/cirrhy-report), bundling the
+schema, the agent guide and the semantics a correct report needs (durations,
+timezones, tombstones, history, archived-versus-deleted) — copy it into
+`~/.claude/skills/` and a conversation needs only your file and the
+question. Reporting through it is read-only by design; when you instead want
+the file *changed*, the import rules above apply.
+
 ## Adding a language
 
 Copy `app/lib/l10n/app_en.arb` to `app_<code>.arb`, translate, add the code to

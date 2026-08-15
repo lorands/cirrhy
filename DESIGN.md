@@ -287,6 +287,19 @@ Built 2026-08-15, with no platform code at all: the §4.1 channel was already ge
 
 ---
 
+## 12. Reporting beyond the app — **Decided** (2026-08-15)
+
+§1 makes reporting over an arbitrary timespan first-class, and the Reports screen carries that: day/week/month/custom ranges, filters, summary and list views. What Cirrhy deliberately does **not** carry is a report *builder* — pivot tables, chart designers, export-format pickers. That surface grows without bound (every answered question breeds the next checkbox), every export format is a dialect, and it is the same shape of work §10 already identified: one-off judgement over a well-specified format, which is an agent job, not app code. **The file format is the reporting seam exactly as it is the import seam** — the §10 artifacts (`cirrhy-document.schema.json` for shape, `llms.md` for meaning) are already the complete contract, and reporting is the easier direction: read-only, so none of import's rollback machinery is even needed.
+
+Two deliverables make the claim concrete rather than aspirational (built 2026-08-15):
+
+- **A packaged skill, `.claude/skills/cirrhy-report`**, bundling verbatim copies of the schema and the agent guide plus the semantics a correct report needs and the schema cannot express (durations from `start`/`stop`, UTC→local bucketing, tombstones and `history` excluded from totals, `archived` ≠ deleted, per-entry `billable` authoritative). With it, a conversation needs only the user's `cirrhy.json` and the question. A sync test in `packages/cirrhy_merge` (`skill_sync_test.dart`) keeps the bundled copies byte-identical to `doc/` — the same drift-tether pattern as §10's schema-sync test, with `doc/` canonical.
+- **A full-size example document plus worked examples, `docs/reporting/`**: a generated, deterministic `cirrhy.json` (21 months, ~1,400 entries, an imported era with provenance, history, tombstones — `tool/gen_example_document.py`), and three prompt→artifact pairs (two charts, one spreadsheet) produced from nothing but the file and the quoted prompt. An engine test (`example_document_test.dart`) keeps the example decodable and in the codec's canonical byte form, so the "any agent can work this file" claim is never demonstrated on a document the app itself would not produce.
+
+Reporting through the seam is **read-only by prescription**, the same enforcement philosophy as §10: the skill and the guide say never to write the document for a reporting task, and if an agent ignores that, §3's read-merge-write and the recovery story bound the damage — prescription plus recoverability, not validation.
+
+---
+
 ## References
 
 - [KeePass — Synchronization](https://keepass.info/help/v2/sync.html)

@@ -3,7 +3,7 @@ description: "A single-file personal time tracker."
 publish_to: none
 
 # versionName / CFBundleShortVersionString + build number.
-version: 0.1.0+1
+version: 0.2.1+2
 
 resolution: workspace
 

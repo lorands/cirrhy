@@ -150,5 +150,6 @@
   "reselectFolderAction": "Ordner erneut wählen…",
   "notNowAction": "Jetzt nicht",
   "syncedAtTime": "Synchronisiert · {time}",
-  "folderUnreachableShort": "Ordner nicht erreichbar"
+  "folderUnreachableShort": "Ordner nicht erreichbar",
+  "syncRefreshNow": "Jetzt nach Änderungen suchen"
 }

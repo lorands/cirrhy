@@ -15,7 +15,7 @@
 import 'dart:io';
 
 import 'package:cirrhy/data/document_session.dart';
-import 'package:cirrhy/data/session_resume_observer.dart';
+import 'package:cirrhy/data/session_refresher.dart';
 import 'package:cirrhy/l10n/generated/app_localizations.dart';
 import 'package:cirrhy/settings/document_location_preference.dart';
 import 'package:cirrhy/shell/app_shell.dart';
@@ -489,8 +489,8 @@ void main() {
       expect(session.hasUnacknowledgedForeignTimers, isTrue);
     });
 
-    test('lastRefreshNewEntryIds names exactly the merged entries and is '
-        'recomputed by the next refresh', () async {
+    test('lastRefreshNewEntryIds names exactly the merged entries, and is '
+        'replaced by the next refresh that brings some', () async {
       final (session, _) = await openAt(dirA);
       await session.put(entry('mine'));
       expect(session.lastRefreshNewEntryIds, isEmpty);
@@ -512,8 +512,143 @@ void main() {
       );
       expect(session.lastRefreshNewRecords, 3);
 
+      // An empty-handed refresh leaves the marks standing: reads come a couple
+      // of seconds apart after a resume, and clearing on those would take the
+      // marks away before anyone could read them.
       await session.refresh();
-      expect(session.lastRefreshNewEntryIds, isEmpty);
+      expect(
+        session.lastRefreshNewEntryIds,
+        unorderedEquals(['theirs-1', 'theirs-2']),
+      );
+      expect(session.lastRefreshNewRecords, 0);
+
+      // A refresh that does bring something replaces them outright.
+      await writeExternal(
+        dirA,
+        (doc) => doc.put(entry('theirs-3', minute: 30)),
+      );
+      await session.refresh();
+      expect(session.lastRefreshNewEntryIds, ['theirs-3']);
+    });
+  });
+
+  group('folder watcher', () {
+    const locationA = DocumentLocation(handle: 'memory:watch-a', label: 'A');
+    const locationB = DocumentLocation(handle: 'memory:watch-b', label: 'B');
+
+    /// An open session over the in-memory fake, whose watch stream stands in
+    /// for the platform's — the NSFilePresenter on the two Apple platforms,
+    /// nothing at all on the other three (§4.1).
+    Future<(DocumentSession, DocumentLocationPreference, FakeDocumentDirectory)>
+    openWatched() async {
+      final directory = FakeDocumentDirectory();
+      final preference = await DocumentLocationPreference.load();
+      await preference.set(locationA);
+      final session = DocumentSession(
+        directory: directory,
+        locationPreference: preference,
+        clock: () => now,
+        deviceId: 'device-a',
+      );
+      await session.open();
+      return (session, preference, directory);
+    }
+
+    Future<void> writeAsOtherDevice(
+      FakeDocumentDirectory directory,
+      DocumentLocation location,
+      String id,
+    ) async {
+      final other = DocumentRepository(store: directory.storeAt(location));
+      await other.load();
+      await other.save(CirrhyDocument.empty().put(entry(id)));
+    }
+
+    /// Waits out the settle window the session gives a burst of events. Real
+    /// time rather than a fake clock: this is a plain test, and the margin
+    /// over the microtask-speed fake store is enormous.
+    Future<void> settle() =>
+        Future<void>.delayed(DocumentSession.watchSettle * 3);
+
+    test('the folder saying it changed is a re-read, without waiting for the '
+        'schedule', () async {
+      final (session, _, directory) = await openWatched();
+      addTearDown(session.dispose);
+      expect(directory.watched, [locationA]);
+      expect(session.document.entries, isEmpty);
+
+      await writeAsOtherDevice(directory, locationA, 'theirs');
+      directory.announceChange();
+      await settle();
+      await session.idle;
+
+      expect(session.document.entries.keys, ['theirs']);
+      expect(session.lastRefreshNewRecords, 1);
+    });
+
+    test('a burst of events costs one re-read, not one each', () async {
+      final (session, _, directory) = await openWatched();
+      addTearDown(session.dispose);
+      final store = directory.storeAt(locationA);
+      final before = store.reads;
+
+      // One write is reported several times — the item changed, a subitem
+      // changed, something moved into place. They all want the same answer,
+      // and the answer is worth taking after the last of them, not during.
+      directory.announceChange();
+      directory.announceChange();
+      directory.announceChange();
+      await pumpEventQueue();
+      expect(store.reads, before, reason: 'still settling');
+
+      await settle();
+      await session.idle;
+
+      expect(store.reads, before + 1);
+    });
+
+    test('the watch follows the document to a new folder and lets go of the '
+        'old one', () async {
+      final (session, preference, directory) = await openWatched();
+      addTearDown(session.dispose);
+
+      await preference.set(locationB);
+      await session.idle;
+
+      expect(directory.watched, [locationA, locationB]);
+      expect(directory.liveWatchers, 1, reason: 'the old one was let go');
+
+      await writeAsOtherDevice(directory, locationB, 'theirs');
+      directory.announceChange();
+      await settle();
+      await session.idle;
+
+      expect(session.document.entries.keys, ['theirs']);
+    });
+
+    test('a cleared location stops the watching', () async {
+      final (session, preference, directory) = await openWatched();
+      addTearDown(session.dispose);
+
+      // §4.4's forced re-pick: the handle went bad and was cleared.
+      await preference.clear();
+      await session.idle;
+
+      expect(directory.liveWatchers, 0);
+    });
+
+    test('disposing lets go of the folder', () async {
+      final (session, _, directory) = await openWatched();
+      expect(directory.liveWatchers, 1);
+
+      session.dispose();
+      await pumpEventQueue();
+
+      expect(directory.liveWatchers, 0);
+      // And nothing is listening, so a late event cannot reach a disposed
+      // session's notifyListeners — nor leave a settle timer behind it.
+      directory.announceChange();
+      await settle();
     });
   });
 
@@ -596,7 +731,7 @@ void main() {
     });
   });
 
-  group('resume observer', () {
+  group('refresher', () {
     const location = DocumentLocation(handle: 'memory:a', label: 'A');
 
     /// An open session over the in-memory fake — real file IO cannot settle
@@ -626,16 +761,27 @@ void main() {
           ),
         );
 
+    /// The other machine's save, arriving through a sync client: its own
+    /// repository over the same store.
+    Future<void> writeAsOtherDevice(
+      FakeDocumentDirectory directory,
+      String id,
+    ) async {
+      final other = DocumentRepository(store: directory.storeAt(location));
+      await other.load();
+      await other.save(CirrhyDocument.empty().put(entry(id)));
+    }
+
     testWidgets('the shell hooks it exactly when a session exists', (
       tester,
     ) async {
       await pumpShell(tester, null);
-      expect(find.byType(SessionResumeObserver), findsNothing);
+      expect(find.byType(SessionRefresher), findsNothing);
 
       final (session, _) = await memorySession();
       addTearDown(session.dispose);
       await pumpShell(tester, session);
-      expect(find.byType(SessionResumeObserver), findsOneWidget);
+      expect(find.byType(SessionRefresher), findsOneWidget);
     });
 
     testWidgets('resuming the app merges what changed on disk', (tester) async {
@@ -645,15 +791,93 @@ void main() {
       expect(session.document.entries, isEmpty);
 
       // A sync client wrote while the app was backgrounded.
-      final other = DocumentRepository(store: directory.storeAt(location));
-      await other.load();
-      await other.save(const CirrhyDocument.empty().put(entry('synced')));
+      await writeAsOtherDevice(directory, 'synced');
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
 
       expect(session.document.entries.keys, ['synced']);
       expect(session.lastRefreshNewRecords, 1);
+    });
+
+    testWidgets('a file delivered just after the resume read is still caught', (
+      tester,
+    ) async {
+      final (session, directory) = await memorySession();
+      addTearDown(session.dispose);
+      await pumpShell(tester, session);
+
+      // Coming forward finds the old file: the provider is still fetching.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(session.document.entries, isEmpty);
+
+      // It lands moments later, with nothing at all to announce it. This is
+      // the case the resume-only version could never see.
+      await writeAsOtherDevice(directory, 'late');
+      await tester.pump(SessionRefresher.settling.first);
+
+      expect(session.document.entries.keys, ['late']);
+    });
+
+    testWidgets('the reads keep coming while the app sits open', (
+      tester,
+    ) async {
+      final (session, directory) = await memorySession();
+      addTearDown(session.dispose);
+      await pumpShell(tester, session);
+
+      // Past the settling burst and into the steady interval.
+      var elapsed = Duration.zero;
+      for (final delay in SessionRefresher.settling) {
+        elapsed += delay;
+      }
+      await tester.pump(elapsed);
+
+      await writeAsOtherDevice(directory, 'while-watching');
+      await tester.pump(SessionRefresher.steady);
+
+      expect(session.document.entries.keys, ['while-watching']);
+    });
+
+    /// The framework asserts on lifecycle jumps, so leaving and returning are
+    /// walked one state at a time exactly as the engine reports them.
+    void lifecycle(WidgetTester tester, List<AppLifecycleState> states) {
+      for (final state in states) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+    }
+
+    testWidgets('nothing is read behind the app, and resuming starts again', (
+      tester,
+    ) async {
+      final (session, directory) = await memorySession();
+      addTearDown(session.dispose);
+      await pumpShell(tester, session);
+
+      lifecycle(tester, [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]);
+      await tester.pump();
+
+      final store = directory.storeAt(location);
+      await writeAsOtherDevice(directory, 'while-away');
+      final readsWhenBackgrounded = store.reads;
+      await tester.pump(const Duration(minutes: 5));
+
+      expect(store.reads, readsWhenBackgrounded, reason: 'no reads while away');
+      expect(session.document.entries, isEmpty);
+
+      lifecycle(tester, [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]);
+      await tester.pump();
+
+      expect(session.document.entries.keys, ['while-away']);
     });
   });
 }

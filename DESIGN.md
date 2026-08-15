@@ -101,8 +101,8 @@ The entire platform surface is one narrow interface, and the core depends only o
 | Platform | Implementation |
 | --- | --- |
 | Linux / Windows | plain filesystem path |
-| macOS | `NSOpenPanel` → **security-scoped bookmark** (`.withSecurityScope`) as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` |
-| iOS | `UIDocumentPicker` → **security-scoped bookmark** as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` for reads and writes |
+| macOS | `NSOpenPanel` → **security-scoped bookmark** (`.withSecurityScope`) as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` → `NSFilePresenter` while the folder is open |
+| iOS | `UIDocumentPicker` → **security-scoped bookmark** as the durable handle → `startAccessingSecurityScopedResource` around each access → `NSFileCoordinator` for reads and writes → `NSFilePresenter` while the folder is open |
 | Android | SAF `ACTION_OPEN_DOCUMENT_TREE` → `takePersistableUriPermission` → `ContentResolver` streams |
 
 **macOS is an Apple platform here, not a desktop one.** Flutter's macOS template ships with App Sandbox enabled, and a sandboxed app's access to a picked folder dies with the process — the path still reads fine while the app runs, which is exactly what makes this worth stating: it looks correct until the first restart. Only a security-scoped bookmark makes the handle durable, so macOS follows iOS. Disabling the sandbox would make the path work and would also forfeit the Mac App Store; not worth it to save one file of Swift shared with iOS anyway.
@@ -123,13 +123,25 @@ Temp file, then rename over the original — KeePass's "file transactions", whic
 
 Be aware this is genuinely contentious in our exact deployment: replacing the file breaks its identity for sync clients, cloud clients holding a lock make delete-then-rename fail, and users hit real I/O errors on Google Drive/GVfs and corrupted databases on iOS Files-backed storage. Both KeePass and KeePassXC ship an option to disable it. Treat atomic-rename as the desktop default **with an escape hatch**.
 
+**How the identity gets broken, measured** (APFS, 2026-08-15), replacing a file carrying an extended attribute:
+
+| strategy | inode | creation date | xattrs |
+| --- | --- | --- | --- |
+| `Data.write(options: .atomic)` | new | lost | **lost** |
+| `FileManager.replaceItemAt` | new | kept | kept |
+| in-place write | same | kept | kept |
+
+The xattr column is the one that matters, because a File Provider stamps the items it tracks. The two Apple platforms shipped `.atomic` until 2026-08-15, which means every save handed the provider an unrecognisable file at a path it thought it owned — read as delete-then-create, that leaves the provider with a brand-new local item it uploads while remote changes to the original have nowhere to land. **Writes out, nothing back**, which is precisely the iOS-against-Dropbox symptom that started §4.4's rework. They now use `replaceItemAt`, which keeps the metadata *and* this section's crash guarantee, with an in-place write as the escape hatch when the swap fails — the same fallback `PathDocumentStore` already takes. Note that neither temp-and-swap keeps the inode: what is being preserved is carried metadata, not the file object.
+
 **Android cannot do this at all.** SAF has no replace-over-existing: `DocumentsContract.renameDocument` fails when the target name is taken, so the only sequences available are delete-then-rename or a plain in-place overwrite, and the first is strictly worse — it widens the window to include the moment when neither file exists. Android therefore writes in place, and the **app-private pre-write backup is not optional there**, it is the entire recovery story. §4.2's fallback rule, promoted to the rule.
 
 ### 4.4 Accepted failure modes
 
 These follow from choosing the OS route. They are mitigated by the merge engine, not avoided.
 
-- **No change notification.** Nothing tells us the file changed underneath us. Therefore: re-read and hash-compare on every foreground/resume and unconditionally before every write. §3 is what makes this safe.
+- **No change notification.** Nothing tells us the file changed underneath us. Therefore: re-read and hash-compare unconditionally before every write, and on a schedule for as long as the app is in front. **Asking once, on resume, is not enough** — found 2026-08-15 against a Dropbox folder on iOS, where the app could sit days out of date while insisting it was synced. The read taken the instant the app comes forward is the one *least* likely to be fresh: a provider only starts fetching when something touches the folder and finishes seconds later, by which time the single read has been and gone. A resume-only re-read is also blind to a write that lands while the app sits open. So the reads bunch up right after a resume and then settle to a steady interval (`SessionRefresher`), with a manual pull-to-refresh and a tap-to-refresh on the status line for a sync client slower than that. This is not only about a stale screen: a stale read whose hash still matches what this device last wrote sends the next save down §3.2's "nothing else touched the file" path, which then writes over records this device never got to read. §3 is what makes the rest of it safe.
+
+  **Partly bought back on the Apple platforms**, 2026-08-15: registering an `NSFilePresenter` for the chosen folder is the documented way to say *somebody is looking at this*, and it earns two things — the system calls back when an item under the folder changes, and a File Provider is told the item is being observed, which is the hook it is supposed to use to keep it current. So iOS and macOS re-read as the change lands rather than on the next scheduled read. It is a nudge, not a guarantee: a provider that never signals still never signals, which is why the schedule stays and this is written as an addition to it, never a replacement. The port models it as `DocumentDirectory.watch`, an empty stream everywhere it cannot be honoured — Android deliberately, because SAF's content observers are not delivered by cloud-backed providers, and Linux/Windows because `Directory.watch` there would buy the least. Our own writes are coordinated *as* the presenter, so a save never comes back as somebody else's change.
 - **Stale or revoked handles.** iOS bookmarks go stale when the file is moved, renamed, or the provider app is reinstalled; Android persistable permissions can be revoked. Both must degrade to a clear "re-select your file" prompt — never a crash, never silent data loss.
 - **Non-materialized files.** A provider may return a placeholder that hasn't downloaded. Coordinated access triggers the fetch, so reads are async and need a visible "downloading" state. On Android, `ContentResolver` may block or throw for cloud-backed documents.
 - **Weaker conflict handling than an owned transport**, per Keepass2Android's own docs on SAF. KeePassium, which takes this same OS-provider approach on iOS, ends up advising users to enable Background App Refresh for their cloud app and to foreground it manually when files go stale. Expect to need comparable troubleshooting docs, and compensate with a robust merge plus **visibly surfaced sync state in the UI** rather than pretending sync is instant.

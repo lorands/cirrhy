@@ -106,6 +106,17 @@ class DocumentSession extends ChangeNotifier {
   final String deviceId;
 
   DocumentRepository? _repository;
+
+  /// The folder telling us it changed, where the platform can (§4.1). Held so
+  /// it can be moved with the document and dropped with the session — an
+  /// observer of a folder nothing points at any more is a leak, and on the
+  /// Apple platforms it also holds that folder's security scope open.
+  StreamSubscription<void>? _watch;
+
+  /// Waiting out a burst of folder events before re-reading. See
+  /// [watchSettle].
+  Timer? _watchSettleTimer;
+
   CirrhyDocument _document = const CirrhyDocument.empty();
   SessionStatus _status = SessionStatus.idle;
   Object? _lastError;
@@ -137,9 +148,14 @@ class DocumentSession extends ChangeNotifier {
   int get lastRefreshNewRecords => _lastRefreshNewRecords;
 
   /// The entry ids the last [refresh] merged in from outside — the rows the
-  /// timer list marks as "new from another device". Recomputed by every
-  /// refresh, so the marks last exactly one refresh cycle and then simply
-  /// stop being true, with no timers involved.
+  /// timer list marks as "new from another device".
+  ///
+  /// Replaced by the next refresh that brings entries, *not* by the next
+  /// refresh: reads now come a couple of seconds apart after a resume
+  /// (`SessionRefresher`), and an empty-handed one clearing the set would
+  /// flash the marks and take them away again before anyone read them. So the
+  /// marks name the newest arrivals until newer ones arrive, and still need
+  /// no timers to expire.
   Set<String> get lastRefreshNewEntryIds => _lastRefreshNewEntryIds;
 
   /// Completes once everything queued so far has run. Await after triggering
@@ -205,6 +221,7 @@ class DocumentSession extends ChangeNotifier {
       final repository = _repositoryAt(location);
       _document = await repository.load();
       _repository = repository;
+      _watchFolder(location);
       _status = SessionStatus.ready;
       _lastError = null;
     } on DocumentLocationUnavailable catch (e) {
@@ -236,21 +253,18 @@ class DocumentSession extends ChangeNotifier {
       _lastRefreshed = _now();
       final delta = _document.recordCount - before;
       _lastRefreshNewRecords = delta < 0 ? 0 : delta;
-      _lastRefreshNewEntryIds = _document.entries.keys.toSet().difference(
-        entriesBefore,
-      );
+      final arrived = _document.entries.keys.toSet().difference(entriesBefore);
+      if (arrived.isNotEmpty) _lastRefreshNewEntryIds = arrived;
       if (_status == SessionStatus.unavailable) _status = SessionStatus.ready;
       _lastError = null;
     } on DocumentLocationUnavailable catch (e) {
       _lastError = e;
       _status = SessionStatus.unavailable;
-      _lastRefreshNewEntryIds = const {};
     } on DocumentFormatException catch (e) {
       // An external writer left an unreadable file. The in-memory document is
       // intact and saves stay blocked by the engine until the file is
       // readable again, so record the failure and carry on.
       _lastError = e;
-      _lastRefreshNewEntryIds = const {};
     }
     notifyListeners();
   });
@@ -395,6 +409,48 @@ class DocumentSession extends ChangeNotifier {
   DocumentRepository _repositoryAt(DocumentLocation location) =>
       DocumentRepository(store: _directory.storeAt(location), backup: _backup);
 
+  /// Points the folder watcher at [location], or nowhere when it is null.
+  ///
+  /// Follows the repository rather than the preference: a folder is worth
+  /// watching once it is the one being read and written, and the moment it
+  /// stops being that, the observation goes with it (§4.1).
+  /// How long the folder is given to go quiet before the change is read.
+  ///
+  /// One write is reported several times — the item changed, a subitem
+  /// changed, something moved into place — and a provider delivering a file
+  /// can report progress as it goes. They all want the same answer, so the
+  /// settle window turns a burst into one read taken *after* the last event
+  /// rather than several taken during it. Short enough to still be "as it
+  /// lands" next to a schedule measured in seconds.
+  static const watchSettle = Duration(milliseconds: 150);
+
+  void _watchFolder(DocumentLocation? location) {
+    _watchSettleTimer?.cancel();
+    _watchSettleTimer = null;
+    unawaited(_watch?.cancel());
+    _watch = null;
+    if (location == null) return;
+    _watch = _directory
+        .watch(location)
+        .listen(
+          (_) => _onFolderChanged(),
+          // The platform saying it cannot watch, which most of them cannot. The
+          // schedule is what keeps the document current; this was only ever the
+          // chance to be quicker about it.
+          onError: (Object _) {},
+          cancelOnError: true,
+        );
+  }
+
+  /// The folder changed underneath us and the platform was able to say so.
+  void _onFolderChanged() {
+    _watchSettleTimer?.cancel();
+    _watchSettleTimer = Timer(watchSettle, () {
+      _watchSettleTimer = null;
+      unawaited(refresh());
+    });
+  }
+
   /// Appends [action] to the serial queue. The chain itself never carries an
   /// error forward — each action handles its own — but the caller still sees
   /// anything [action] throws.
@@ -451,6 +507,7 @@ class DocumentSession extends ChangeNotifier {
       repository = _repositoryAt(location);
       _document = await repository.save(_document);
       _repository = repository;
+      _watchFolder(location);
       _status = SessionStatus.ready;
       _lastError = null;
     } on DocumentLocationUnavailable catch (e) {
@@ -475,6 +532,7 @@ class DocumentSession extends ChangeNotifier {
       // exactly the state the forced re-pick exists to save — and drop the
       // repository so nothing writes through a dead handle.
       _repository = null;
+      _watchFolder(null);
       if (_status != SessionStatus.idle) _status = SessionStatus.unavailable;
       notifyListeners();
       return;
@@ -490,6 +548,7 @@ class DocumentSession extends ChangeNotifier {
 
   @override
   void dispose() {
+    _watchFolder(null);
     _locationPreference.removeListener(_onLocationChanged);
     super.dispose();
   }

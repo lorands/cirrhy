@@ -560,5 +560,52 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(EntryEditScreen), findsNothing);
     });
+
+    // Both idioms, because the physics differ and the gesture has to survive
+    // both: iOS and macOS overscroll with a bounce, the other three clamp at
+    // the edge. iOS is the platform this affordance was added for, so it is
+    // the one that must not be taken on trust.
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+      testWidgets('pulling the empty list down re-reads the file — $platform', (
+        tester,
+      ) async {
+        final directory = FakeDocumentDirectory();
+        final session = await openSession(directory);
+        addTearDown(session.dispose);
+        await pumpTimer(tester, session: session, platform: platform);
+        expect(session.document.entries, isEmpty);
+
+        // Another device logged work and a sync client delivered it, which is
+        // the one event nothing in the app is told about (§4.4). The pull is
+        // the user's way of asking, on the screen where they notice it
+        // missing.
+        final other = DocumentRepository(store: directory.storeAt(_location));
+        await other.load();
+        await other.save(
+          CirrhyDocument.empty().put(
+            TimeEntry(
+              id: 'from-elsewhere',
+              modified: now,
+              start: now,
+              stop: now.add(const Duration(minutes: 30)),
+              projectId: null,
+              locationChanged: now,
+              description: 'from-elsewhere',
+            ),
+          ),
+        );
+
+        // The list is empty here, so this only reaches the indicator because
+        // the screen forces AlwaysScrollableScrollPhysics.
+        await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await session.idle;
+        await tester.pumpAndSettle();
+
+        expect(session.document.entries.keys, ['from-elsewhere']);
+        expect(find.text('from-elsewhere'), findsOneWidget);
+      });
+    }
   });
 }

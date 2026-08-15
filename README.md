@@ -2,16 +2,21 @@
 
 # Cirrhy
 
-**A personal FREE OSS time tracker that keeps everything you track in a single file YOU OWN.**
+
+**Personal time tracking in a single file you own. No account, no server, no network code — sync it with anything, merge-safe on five platforms.**
+
+It's FREE and Open-Source. You OWN it.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44-02569B.svg?logo=flutter)](https://flutter.dev)
+
+Cirrhy keeps everything you track — clients, projects, tasks, every timed minute — in one cirrhy.json in a folder you choose. There is no account, no server, and no network code at all: nothing to shut down, breach, or paywall between you and your own hours. Drop the folder in whatever sync you already trust and every device merges cleanly.
 
 The name is short for *circadian rhythm*. Cirrhy takes the useful core of tools
 like Clockify, Toggl and Kimai — clients, projects, tasks, a running timer,
 reports — and strips away the team dimension: no accounts, no server, no
 sharing, no cloud. One person, five platforms (Linux, Android, Windows, macOS,
-iOS), and all data in one `cirrhy.json` in a folder you choose.
+iOS).
 
 Syncing is deliberately *your* problem, which makes it your choice: keep the
 folder in the cloud you already use — Dropbox, iCloud Drive, Nextcloud,

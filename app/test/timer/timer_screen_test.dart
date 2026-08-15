@@ -285,6 +285,15 @@ void main() {
           color: '#3B82F6',
         ),
       );
+      await session.put(
+        Task(
+          id: 't1',
+          modified: now,
+          name: 'Landing page',
+          projectId: 'p1',
+          locationChanged: now,
+        ),
+      );
       final past = TimeEntry(
         id: 'past',
         modified: now,
@@ -292,14 +301,18 @@ void main() {
         stop: now.subtract(const Duration(hours: 1)),
         projectId: 'p1',
         locationChanged: now,
-        taskId: null,
+        taskId: 't1',
         description: 'design review',
       );
       await session.put(past);
 
       await pumpTimer(tester, session: session);
-      expect(find.text('design review'), findsOneWidget);
-      expect(find.text('Acme Corp › Website'), findsOneWidget);
+      // The client tag rides the description line — its name is the tag's
+      // own Text, the description the line's — and the chip names
+      // project › task.
+      expect(find.text('Acme Corp'), findsOneWidget);
+      expect(find.textContaining('design review'), findsOneWidget);
+      expect(find.text('Website › Landing page'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Start a new timer from this entry'));
       await tester.pump();
@@ -309,6 +322,7 @@ void main() {
       final restarted = session.myTimer;
       expect(restarted, isNotNull);
       expect(restarted!.projectId, 'p1');
+      expect(restarted.taskId, 't1');
       expect(restarted.description, 'design review');
     });
 

@@ -71,6 +71,7 @@ class EntryRow extends StatelessWidget {
     final client = project == null
         ? null
         : currentSession?.clientById(project.clientId);
+    final task = currentSession?.taskById(entry.taskId);
     final hm = DateFormat.Hm(l10n.localeName);
     final stop = entry.stop;
     // A stop-less entry is the rare case of an open timer that arrived from
@@ -126,21 +127,46 @@ class EntryRow extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              hasDescription
-                                  ? entry.description
-                                  : l10n.timerNoDescription,
-                              style: hasDescription
-                                  ? text.bodyMedium
-                                  : text.bodyMedium?.copyWith(
-                                      color: colors.textMuted,
+                            // Client tag + description, then a Project › Task
+                            // chip — the client rides the description line so
+                            // the chip has room for the task. The tag is an
+                            // inline WidgetSpan rather than a Row sibling so
+                            // the one ellipsis covers both: a long description
+                            // truncates after the tag, and a pathological
+                            // client name is capped at the line width instead
+                            // of overflowing the row.
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  if (client != null)
+                                    WidgetSpan(
+                                      alignment: PlaceholderAlignment.middle,
+                                      child: Padding(
+                                        padding:
+                                            const EdgeInsetsDirectional.only(
+                                              end: Space.x2,
+                                            ),
+                                        child: ClientTag(client: client),
+                                      ),
                                     ),
+                                  TextSpan(
+                                    text: hasDescription
+                                        ? entry.description
+                                        : l10n.timerNoDescription,
+                                    style: hasDescription
+                                        ? text.bodyMedium
+                                        : text.bodyMedium?.copyWith(
+                                            color: colors.textMuted,
+                                          ),
+                                  ),
+                                ],
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             if (project != null) ...[
                               const SizedBox(height: Space.x1),
-                              ProjectChip(project: project, client: client),
+                              ProjectChip(project: project, task: task),
                             ],
                             if (newFromSync) ...[
                               const SizedBox(height: Space.x1),

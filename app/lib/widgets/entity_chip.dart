@@ -150,23 +150,62 @@ class SelectableChip extends StatelessWidget {
   }
 }
 
-/// "Client › Project", or just the project name when it has no client. The
-/// dot takes the project's own colour when it parses as `#RRGGBB`, and falls
-/// back to the brand colour otherwise — an unset or malformed colour should
-/// never mean an invisible dot.
-class ProjectChip extends StatelessWidget {
-  const ProjectChip({super.key, required this.project, this.client});
+/// The client's name on a small square-cornered tag — the entry rows put it
+/// in front of the description. Square where [EntityChip] is a pill, so the
+/// two read as different kinds of thing at a glance: the tag names who the
+/// work is for, the pill below it names what the work is.
+class ClientTag extends StatelessWidget {
+  const ClientTag({super.key, required this.client});
 
-  final Project project;
-  final Client? client;
+  final Client client;
 
   @override
   Widget build(BuildContext context) {
     final colors = CirrhyTheme.of(context);
-    final owner = client;
-    final label = owner == null
-        ? project.name
-        : '${owner.name} › ${project.name}';
+    final text = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Space.x2,
+        vertical: Space.x1,
+      ),
+      decoration: BoxDecoration(
+        color: colors.subtle,
+        borderRadius: BorderRadius.circular(Radii.xs),
+      ),
+      child: Text(
+        client.name,
+        style: text.labelSmall?.copyWith(
+          color: colors.textSecondary,
+          fontWeight: FontWeight.w500,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+/// The project's name, with its client prepended and its task appended when
+/// given — "Client › Project", "Project › Task", or any other combination of
+/// the segments that exist. The dot takes the project's own colour when it
+/// parses as `#RRGGBB`, and falls back to the brand colour otherwise — an
+/// unset or malformed colour should never mean an invisible dot.
+class ProjectChip extends StatelessWidget {
+  const ProjectChip({super.key, required this.project, this.client, this.task});
+
+  final Project project;
+  final Client? client;
+  final Task? task;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CirrhyTheme.of(context);
+    final label = [
+      if (client case final owner?) owner.name,
+      project.name,
+      if (task case final leaf?) leaf.name,
+    ].join(' › ');
     return EntityChip(
       label: label,
       dotColor: parseProjectColor(project.color) ?? colors.brand,

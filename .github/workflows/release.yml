@@ -1,0 +1,216 @@
+# Copyright 2026 Lóránd Somogyi
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Pushing a version tag (v0.2.1) builds every target a CI runner can build
+# and publishes them as a GitHub release. app/pubspec.yaml is the source of
+# truth for the version; the verify job refuses a tag that does not match it,
+# so a release can never claim a version the app does not report about itself.
+#
+# iOS is deliberately absent: an installable build needs a signing identity
+# no CI secret store should hold for an OSS project, and an unsigned .ipa
+# helps nobody. README.md documents building onto your own iPhone.
+
+name: release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.44.8
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: tag matches app/pubspec.yaml
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pubspec="$(sed -n 's/^version: *//p' app/pubspec.yaml | cut -d+ -f1)"
+          if [[ "$tag" != "$pubspec" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME is version $tag but" \
+                 "app/pubspec.yaml says $pubspec — bump pubspec (and the" \
+                 "changelog commit) before tagging"
+            exit 1
+          fi
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: tool/check.sh
+      - run: tool/test.sh
+
+  linux:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: tool/target-linux.sh --release
+      - name: package
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          bundle=(app/build/linux/*/release/bundle)
+          cp -r "${bundle[0]}" "cirrhy-$ver-linux-x64"
+          tar czf "cirrhy-$ver-linux-x64.tar.gz" "cirrhy-$ver-linux-x64"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cirrhy-linux
+          path: cirrhy-*-linux-x64.tar.gz
+          if-no-files-found: error
+
+  android:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        # Debug-signed until a signing config exists — the script says so too.
+      - run: tool/target-android.sh --release
+      - name: package
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk \
+             "cirrhy-$ver-android.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cirrhy-android
+          path: cirrhy-*-android.apk
+          if-no-files-found: error
+
+  windows:
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: tool/target-windows.sh --release
+      - name: package
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          release=(app/build/windows/*/runner/Release)
+          cp -r "${release[0]}" "cirrhy-$ver-windows-x64"
+          7z a "cirrhy-$ver-windows-x64.zip" "cirrhy-$ver-windows-x64"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cirrhy-windows
+          path: cirrhy-*-windows-x64.zip
+          if-no-files-found: error
+
+  macos:
+    needs: verify
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: tool/target-macos.sh --release
+      - name: package
+        # ditto, not zip — it keeps the .app bundle's symlinks and metadata.
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          app=(app/build/macos/Build/Products/Release/cirrhy.app)
+          ditto -c -k --keepParent "${app[0]}" "cirrhy-$ver-macos-universal.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cirrhy-macos
+          path: cirrhy-*-macos-universal.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [linux, android, windows, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          cd dist
+          sha256sum -- * > sha256sums.txt
+          cat > ../notes.md <<EOF
+          Prebuilt binaries for Cirrhy $ver, packaged by CI from this tag.
+          Honest labels, as ever:
+
+          - **Linux** (\`-linux-x64.tar.gz\`) — self-contained bundle; untar
+            and run \`./cirrhy\`. For a proper taskbar icon, run
+            \`tool/install-linux.sh\` from a source checkout.
+          - **Android** (\`-android.apk\`) — debug-signed for now: installs
+            on any device with developer mode, and will be replaced by a
+            properly signed build once one exists.
+          - **macOS** (\`-macos-universal.zip\`) — unsigned and not
+            notarized; first launch via right-click → Open.
+          - **Windows** (\`-windows-x64.zip\`) — compiles and packages in CI,
+            but this target has not yet been tested by hand. Reports welcome.
+          - **iOS** — no artifact: an installable build needs your own
+            signing; the README's "macOS and iOS" section is the way.
+
+          \`sha256sums.txt\` covers every file above.
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "Cirrhy $ver" \
+            --notes-file ../notes.md \
+            --generate-notes \
+            -- *

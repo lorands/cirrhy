@@ -74,8 +74,13 @@ itself is a pure-Dart package with no UI dependencies,
 Early days, honestly labelled: the screens above are real, but the project is
 pre-release. **Linux, Android, macOS and iOS are built and tested** (Android
 on an emulator, the Apple targets on a MacBook); Windows is scaffolded but
-untested. There are no prebuilt binaries, no CI and no store listings yet, so
-until those exist, building from source is the way in.
+untested. Tagged versions are built, tested and packaged by CI onto the
+[Releases page](https://github.com/lorands/cirrhy/releases) — a Linux
+bundle, a debug-signed Android APK, an unsigned macOS app and a
+CI-compiled-but-untested Windows build, each labelled as exactly that.
+There are no store listings yet, and iOS has no prebuilt artifact (it needs
+your own signing — see below), so for those two, building from source is the
+way in.
 
 ## Building from source
 

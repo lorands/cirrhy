@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lorands.com/cirrhy/cirrhy-document.schema.json",
+  "title": "Cirrhy document",
+  "description": "The single JSON file (cirrhy.json) holding all of a Cirrhy user's tracking data. Produced and consumed by packages/cirrhy_merge; the schema-sync test in that package keeps this file in step with the code. Importers: read doc/llms.md alongside this schema — it carries the rules a valid-but-wrong document would break.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "clients",
+    "projects",
+    "tasks",
+    "entries",
+    "runningTimers",
+    "tombstones"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "cirrhy" },
+    "formatVersion": {
+      "const": 2,
+      "description": "Writers stamp the version they produce; readers accept this version and older, and refuse newer ones rather than write a lossy file back. v2 added importSource/externalId."
+    },
+    "clients": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/client" }
+    },
+    "projects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/project" }
+    },
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task" }
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/timeEntry" }
+    },
+    "runningTimers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/runningTimer" },
+      "description": "One per device with a live timer, keyed by deviceId. Importers must never create these."
+    },
+    "tombstones": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tombstone" },
+      "description": "Recorded deletions. Without its tombstone, a deleted record is resurrected by the next merge with any copy that still holds it."
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant, ISO 8601 with trailing Z, e.g. 2026-08-14T09:30:00.000Z."
+    },
+    "uuid": {
+      "type": "string",
+      "format": "uuid",
+      "description": "RFC 4122 v4, freshly minted for every record. Never derived from or reused as a source system's identifier — that is what externalId is for."
+    },
+    "nullableString": { "type": ["string", "null"] },
+    "nullableTimestamp": {
+      "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }]
+    },
+    "importSource": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Which import produced this record; absent on everything made by hand. A free string naming the migration (e.g. 'kimai - truenas'), identical on every record of one import batch. Traceability only, never a merge key; rollback of a batch is 'tombstone every record whose importSource matches'."
+    },
+    "externalId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The record's identifier in its source system; absent on everything made by hand. Compound (importer's choice of encoding) when the source needs more than one value to name a record."
+    },
+    "history": {
+      "type": "array",
+      "description": "Prior versions of this record, demoted by merges it lost; newest first. Importers omit this — imported records have no past.",
+      "items": {
+        "type": "object",
+        "required": ["modified"],
+        "properties": { "modified": { "$ref": "#/$defs/timestamp" } },
+        "additionalProperties": true
+      }
+    },
+    "client": {
+      "type": "object",
+      "required": ["id", "modified", "name", "archived"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "modified": { "$ref": "#/$defs/timestamp" },
+        "name": { "type": "string" },
+        "archived": { "type": "boolean" },
+        "importSource": { "$ref": "#/$defs/importSource" },
+        "externalId": { "$ref": "#/$defs/externalId" },
+        "history": { "$ref": "#/$defs/history" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "id",
+        "modified",
+        "locationChanged",
+        "name",
+        "clientId",
+        "color",
+        "billable",
+        "archived"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "modified": { "$ref": "#/$defs/timestamp" },
+        "locationChanged": {
+          "$ref": "#/$defs/timestamp",
+          "description": "When this project was last re-parented to another client. Moves merge independently of edits; a new record sets this equal to modified."
+        },
+        "name": { "type": "string" },
+        "clientId": {
+          "$ref": "#/$defs/nullableString",
+          "description": "The owning client's id, or null for a project with no client. Must resolve within this document."
+        },
+        "color": {
+          "$ref": "#/$defs/nullableString",
+          "description": "Hex color like #RRGGBB, or null for the default."
+        },
+        "billable": { "type": "boolean" },
+        "archived": { "type": "boolean" },
+        "importSource": { "$ref": "#/$defs/importSource" },
+        "externalId": { "$ref": "#/$defs/externalId" },
+        "history": { "$ref": "#/$defs/history" }
+      }
+    },
+    "task": {
+      "type": "object",
+      "required": [
+        "id",
+        "modified",
+        "locationChanged",
+        "name",
+        "projectId",
+        "archived"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "modified": { "$ref": "#/$defs/timestamp" },
+        "locationChanged": { "$ref": "#/$defs/timestamp" },
+        "name": { "type": "string" },
+        "projectId": {
+          "$ref": "#/$defs/nullableString",
+          "description": "The owning project's id, or null. Must resolve within this document."
+        },
+        "archived": { "type": "boolean" },
+        "importSource": { "$ref": "#/$defs/importSource" },
+        "externalId": { "$ref": "#/$defs/externalId" },
+        "history": { "$ref": "#/$defs/history" }
+      }
+    },
+    "timeEntry": {
+      "type": "object",
+      "required": [
+        "id",
+        "modified",
+        "locationChanged",
+        "start",
+        "stop",
+        "projectId",
+        "taskId",
+        "description",
+        "billable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "modified": { "$ref": "#/$defs/timestamp" },
+        "locationChanged": { "$ref": "#/$defs/timestamp" },
+        "start": { "$ref": "#/$defs/timestamp" },
+        "stop": {
+          "$ref": "#/$defs/nullableTimestamp",
+          "description": "null means the entry is still open (a live timer from another device). start and stop are one unit: they are written together and merged together, never mixed across versions. Importers always write a non-null stop."
+        },
+        "projectId": { "$ref": "#/$defs/nullableString" },
+        "taskId": {
+          "$ref": "#/$defs/nullableString",
+          "description": "If set, must belong to the project named by projectId."
+        },
+        "description": { "type": "string" },
+        "billable": { "type": "boolean" },
+        "importSource": { "$ref": "#/$defs/importSource" },
+        "externalId": { "$ref": "#/$defs/externalId" },
+        "history": { "$ref": "#/$defs/history" }
+      }
+    },
+    "runningTimer": {
+      "type": "object",
+      "required": [
+        "id",
+        "modified",
+        "deviceId",
+        "startedAt",
+        "projectId",
+        "taskId",
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Equal to deviceId — the running timer is keyed by device, one per device."
+        },
+        "modified": { "$ref": "#/$defs/timestamp" },
+        "deviceId": { "type": "string" },
+        "startedAt": { "$ref": "#/$defs/timestamp" },
+        "projectId": { "$ref": "#/$defs/nullableString" },
+        "taskId": { "$ref": "#/$defs/nullableString" },
+        "description": { "type": "string" },
+        "importSource": { "$ref": "#/$defs/importSource" },
+        "externalId": { "$ref": "#/$defs/externalId" },
+        "history": { "$ref": "#/$defs/history" }
+      }
+    },
+    "tombstone": {
+      "type": "object",
+      "required": ["id", "deletedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the deleted record, in whichever collection it lived."
+        },
+        "deletedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    }
+  }
+}

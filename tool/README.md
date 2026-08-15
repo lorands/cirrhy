@@ -102,6 +102,33 @@ a development team before `--release` means anything. Two target-specific
 flags exist for that — `tool/target-android.sh --aab` for the Play Console
 format, and `tool/target-ios.sh --codesign` once a team is set.
 
+## Releasing
+
+```sh
+tool/release.sh 0.2.0            # bump, commit, tag v0.2.0, push, store packages
+tool/release.sh 0.2.0 --force    # redo a tag that failed CI's verify
+```
+
+One command in the order that works: bumps `app/pubspec.yaml` to the version
+(and its `+N` build number, which the Play Console requires to grow with
+every upload), commits, tags `v<version>` and pushes branch and tag. The tag
+push is the release — CI verifies the tag against pubspec, builds the four
+platform packages and publishes the GitHub release. Tagging before bumping is
+exactly what the verify job refuses, and exactly the mistake this script
+makes impossible.
+
+`--force` moves an existing tag — the recovery for one that failed verify —
+and force-pushes it; CI adopts the existing GitHub release and replaces its
+assets rather than failing.
+
+After the push it prepares the app-store packages it honestly can, into
+`dist/` (gitignored): the Play Console `.aab` on any host with the Android
+SDK — debug-signed until a keystore exists, so buildable but not yet
+uploadable — and the App Store `.ipa` only on a macOS host with a signing
+team set (`tool/ios-signing.sh`), which further needs a paid membership,
+because a free personal team cannot sign for distribution. `--no-stores`
+skips this stage, `--yes` the push confirmation.
+
 ## Desktop integration on Linux
 
 ```sh

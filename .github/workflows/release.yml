@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: tag matches app/pubspec.yaml
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: desktop build dependencies
         run: |
           sudo apt-get update
@@ -89,7 +89,7 @@ jobs:
           bundle=(app/build/linux/*/release/bundle)
           cp -r "${bundle[0]}" "cirrhy-$ver-linux-x64"
           tar czf "cirrhy-$ver-linux-x64.tar.gz" "cirrhy-$ver-linux-x64"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cirrhy-linux
           path: cirrhy-*-linux-x64.tar.gz
@@ -100,8 +100,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -118,7 +118,7 @@ jobs:
           ver="${GITHUB_REF_NAME#v}"
           cp app/build/app/outputs/flutter-apk/app-release.apk \
              "cirrhy-$ver-android.apk"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cirrhy-android
           path: cirrhy-*-android.apk
@@ -129,7 +129,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -143,7 +143,7 @@ jobs:
           release=(app/build/windows/*/runner/Release)
           cp -r "${release[0]}" "cirrhy-$ver-windows-x64"
           7z a "cirrhy-$ver-windows-x64.zip" "cirrhy-$ver-windows-x64"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cirrhy-windows
           path: cirrhy-*-windows-x64.zip
@@ -154,7 +154,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -168,7 +168,7 @@ jobs:
           ver="${GITHUB_REF_NAME#v}"
           app=(app/build/macos/Build/Products/Release/cirrhy.app)
           ditto -c -k --keepParent "${app[0]}" "cirrhy-$ver-macos-universal.zip"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cirrhy-macos
           path: cirrhy-*-macos-universal.zip
@@ -181,8 +181,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true

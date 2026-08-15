@@ -19,4 +19,4 @@
 /// user reads. `test/about/version_test.dart` reads `pubspec.yaml` off disk
 /// and asserts the two agree, so a release that bumps one and forgets the
 /// other fails the suite instead of shipping a stale number on screen.
-const String appVersion = '0.1.0';
+const String appVersion = '0.2.3';

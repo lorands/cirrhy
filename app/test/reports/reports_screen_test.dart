@@ -617,7 +617,9 @@ void main() {
       await pumpReports(tester, session: session);
       await showEntries(tester);
 
-      await tester.tap(find.text('thursday'));
+      // textContaining: the row's client tag sits in the same rich text, so
+      // the line's plain text is no longer exactly the description.
+      await tester.tap(find.textContaining('thursday'));
       await tester.pumpAndSettle();
 
       expect(find.byType(EntryEditScreen), findsOneWidget);

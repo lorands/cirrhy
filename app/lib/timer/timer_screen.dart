@@ -628,6 +628,10 @@ class _DayGroup extends StatelessWidget {
                   EntryRow(
                     entry: entries[i],
                     session: session,
+                    // Delete lives on the row here (button on desktop,
+                    // swipe-left on mobile) — this list is where entries
+                    // are managed; reports leave it off.
+                    deletable: true,
                     // F2: rows the last refresh merged in are tinted until
                     // the next refresh recomputes the set — no timers, the
                     // mark just stops being true.

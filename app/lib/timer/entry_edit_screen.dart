@@ -21,6 +21,7 @@ import '../l10n/duration_format.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.dart';
+import '../widgets/delete_entry_dialog.dart';
 import '../widgets/entity_chip.dart';
 import 'task_picker_sheet.dart';
 
@@ -275,27 +276,8 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
   Future<void> _confirmDelete() async {
     final entryId = widget.entryId;
     if (entryId == null) return; // Create mode renders no Delete button.
-    final l10n = AppLocalizations.of(context);
-    final colors = CirrhyTheme.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.deleteEntryConfirmTitle),
-        content: Text(l10n.deleteEntryConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.cancelAction),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: colors.danger),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.deleteAction),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+    final confirmed = await confirmDeleteEntry(context);
+    if (!confirmed || !mounted) return;
     final navigator = Navigator.of(context);
     await widget.session.delete(entryId);
     navigator.pop();

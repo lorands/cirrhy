@@ -22,6 +22,7 @@ import '../l10n/generated/app_localizations.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.dart';
 import '../timer/entry_edit_screen.dart';
+import 'delete_entry_dialog.dart';
 import 'entity_chip.dart';
 
 /// One logged entry, as it appears in every list that shows logged entries:
@@ -38,6 +39,7 @@ class EntryRow extends StatelessWidget {
     required this.entry,
     required this.session,
     this.newFromSync = false,
+    this.deletable = false,
   });
 
   final TimeEntry entry;
@@ -45,6 +47,13 @@ class EntryRow extends StatelessWidget {
   /// Null renders the row inert: no editor to push, no session to restart
   /// into. Both taps disable together, never one without the other.
   final DocumentSession? session;
+
+  /// Gives the row a delete affordance, shaped by input idiom rather than
+  /// window width: a per-row button on desktop platforms, swipe-left (a
+  /// [Dismissible]) on touch ones. Both go through [confirmDeleteEntry] —
+  /// the same dialog the entry editor uses. Only the timer list turns this
+  /// on; a report reads entries, it does not manage them.
+  final bool deletable;
 
   /// F2: this entry arrived in the last refresh's merge rather than being
   /// logged here. Tints the row and adds a caption saying so. Only the timer
@@ -71,7 +80,20 @@ class EntryRow extends StatelessWidget {
         : '${hm.format(entry.start.toLocal())} – ${hm.format(stop.toLocal())}';
     final hasDescription = entry.description.isNotEmpty;
 
-    return Container(
+    // The delete affordance follows the input idiom, not the shell's width
+    // breakpoint — a narrow desktop window still has a pointer, a wide
+    // tablet still swipes. Theme.of so tests can steer it per platform.
+    final deleteSession = deletable ? currentSession : null;
+    final touchPlatform = switch (Theme.of(context).platform) {
+      TargetPlatform.android ||
+      TargetPlatform.iOS ||
+      TargetPlatform.fuchsia => true,
+      TargetPlatform.linux ||
+      TargetPlatform.macOS ||
+      TargetPlatform.windows => false,
+    };
+
+    final row = Container(
       // The caption is a third line, so the flagged row is taller — height
       // is otherwise identical to keep the list from shifting elsewhere.
       height: newFromSync ? 80 : 64,
@@ -163,6 +185,32 @@ class EntryRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: Space.x3),
+            // Muted on purpose where the run button is brand-coloured: the
+            // row's job is restarting, deleting is the exception. Danger
+            // colour waits for the confirmation dialog.
+            if (deleteSession != null && !touchPlatform) ...[
+              Tooltip(
+                message: l10n.deleteEntryAction,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    key: ValueKey('deleteEntryButton-${entry.id}'),
+                    customBorder: const CircleBorder(),
+                    onTap: () => _confirmAndDelete(context, deleteSession),
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: colors.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: Space.x2),
+            ],
             RunButton(
               tooltip: l10n.timerRestartTooltip,
               onPressed: currentSession == null
@@ -173,6 +221,40 @@ class EntryRow extends StatelessWidget {
         ),
       ),
     );
+
+    if (deleteSession == null || !touchPlatform) return row;
+
+    return Dismissible(
+      key: ValueKey('dismissEntry-${entry.id}'),
+      direction: DismissDirection.endToStart,
+      // The delete happens inside confirmDismiss, before the dismiss
+      // animation: session.delete completes only after the document changed
+      // and listeners were notified, so the rebuilt list has already let go
+      // of this row by the time it animates out — a declined dialog just
+      // snaps the row back.
+      confirmDismiss: (_) => _confirmAndDelete(context, deleteSession),
+      background: ColoredBox(
+        color: colors.danger,
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(end: Space.x4),
+            child: Icon(Icons.delete_outline, color: colors.textInverse),
+          ),
+        ),
+      ),
+      child: row,
+    );
+  }
+
+  Future<bool> _confirmAndDelete(
+    BuildContext context,
+    DocumentSession session,
+  ) async {
+    final confirmed = await confirmDeleteEntry(context);
+    if (!confirmed) return false;
+    await session.delete(entry.id);
+    return true;
   }
 }
 

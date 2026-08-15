@@ -97,10 +97,13 @@ void main() {
       WidgetTester tester, {
       DocumentSession? session,
       Locale locale = const Locale('en'),
+      // The test binding's default is android; EntryRow reads the platform
+      // through the theme, so a desktop test just pins it here.
+      TargetPlatform? platform,
     }) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: cirrhyLightTheme(),
+          theme: cirrhyLightTheme().copyWith(platform: platform),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: locale,
@@ -307,6 +310,77 @@ void main() {
       expect(restarted, isNotNull);
       expect(restarted!.projectId, 'p1');
       expect(restarted.description, 'design review');
+    });
+
+    // The delete affordance follows the input idiom (entry_row.dart): a
+    // per-row button on desktop platforms, swipe-left on touch ones. Both
+    // funnel through the same confirmation dialog the entry editor uses.
+    Future<DocumentSession> sessionWithPastEntry() async {
+      final session = await openSession(FakeDocumentDirectory());
+      await session.put(
+        TimeEntry(
+          id: 'past',
+          modified: now,
+          start: now.subtract(const Duration(hours: 2)),
+          stop: now.subtract(const Duration(hours: 1)),
+          projectId: null,
+          locationChanged: now,
+          taskId: null,
+          description: 'design review',
+        ),
+      );
+      return session;
+    }
+
+    testWidgets('desktop: each row carries a delete button that confirms, '
+        'then deletes', (tester) async {
+      final session = await sessionWithPastEntry();
+      addTearDown(session.dispose);
+
+      await pumpTimer(tester, session: session, platform: TargetPlatform.linux);
+      expect(find.text('design review'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Delete entry'));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete this entry?'), findsOneWidget);
+
+      await tester.tap(find.text('Delete'));
+      await tester.pump();
+      await session.idle;
+      await tester.pumpAndSettle();
+
+      expect(find.text('design review'), findsNothing);
+      expect(session.document.entries.containsKey('past'), isFalse);
+    });
+
+    testWidgets('mobile: no per-row delete button; swiping left opens the '
+        'confirmation, and cancelling keeps the entry', (tester) async {
+      // The test default platform is android — exactly the touch case.
+      final session = await sessionWithPastEntry();
+      addTearDown(session.dispose);
+
+      await pumpTimer(tester, session: session);
+      expect(find.byTooltip('Delete entry'), findsNothing);
+
+      await tester.drag(find.text('design review'), const Offset(-400, 0));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete this entry?'), findsOneWidget);
+
+      // Declining snaps the row back untouched.
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('design review'), findsOneWidget);
+      expect(session.document.entries.containsKey('past'), isTrue);
+
+      await tester.drag(find.text('design review'), const Offset(-400, 0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pump();
+      await session.idle;
+      await tester.pumpAndSettle();
+
+      expect(find.text('design review'), findsNothing);
+      expect(session.document.entries.containsKey('past'), isFalse);
     });
 
     testWidgets('a null session renders an inert idle screen without '

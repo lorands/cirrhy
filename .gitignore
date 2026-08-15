@@ -56,3 +56,4 @@ app/windows/flutter/generated_plugin*
 # Whose Apple ID signs a build is a property of the machine, not the project.
 # tool/ios-signing.sh writes it; Debug/Release.xcconfig include it optionally.
 app/ios/Flutter/Signing.xcconfig
+dist/

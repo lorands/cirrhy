@@ -80,11 +80,25 @@ python3 tool/gen_app_icons.py          # needs rsvg-convert + magick
 python3 tool/gen_app_icons.py --recrop # also re-derives the mark from logo-1.svg (needs inkscape)
 ```
 
-The source is `assets/logo/cirrhy-mark.svg` — `logo-1.svg` cropped to its drawing bounds. Geometry and colour come from Penpot page `08 · Brand & Logo`, card `App icon`; the script's header records the measurements. Change the design there, then re-run — the same rule as `app/lib/theme/`.
+The source is `assets/logo/cirrhy-mark.svg` — `logo-1.svg` cropped to its drawing bounds. Geometry comes from Penpot page `08 · Brand & Logo`, card `App icon`; the script's header records the measurements. Change the design there, then re-run — the same rule as `app/lib/theme/`. The tiles became brand-ramp **gradients** and the mark a constant optical weight on 2026-08-15 (a flat tile with hairlines read as a green blob at launcher sizes); the script header records the stops, **Penpot's card still shows the old flat tile and needs bringing in step**.
 
-Two things in the script that look like mistakes but are not. The mark sits slightly below centre, because the hands reach up and right. And below ~128px it gets a stroke in its own fill colour, because the artwork's hairlines are ~0.9 units across a 64.6-unit viewBox and antialias into a grey ghost at launcher sizes; above that the boost is zero and the pixels are exactly what the design draws.
+Two things in the script that look like mistakes but are not. The mark sits slightly below centre, because the hands reach up and right. And the mark is stroked in its own fill colour up to a constant ~2.2 units across its 64.6-unit viewBox — constant on purpose, because raster size stopped predicting physical size (a 192px xxxhdpi launcher icon is ten millimetres wide); only favicon-class sizes get more, via the MIN_STROKE_PX floor.
+
+The script also emits the running-timer companions: `-running` hicolor icons (Linux), the `AppIconRunning` imageset (macOS dock), `badge_overlay.ico` (Windows taskbar), and `ic_stat_timer` (the Android notification's status-bar glyph).
 
 Editing `app/linux/runner/resources/` by hand is wasted work for the same reason — the hicolor tree and the `.desktop` file are both generated.
+
+**The Linux taskbar icon needs an install step**: `tool/install-linux.sh` puts the `.desktop` entry and icons into `~/.local/share`, because a Wayland compositor resolves icons by matching the window's app id against installed `.desktop` files — it never asks the window. Without it the taskbar shows the generic Wayland cog, `flutter run` sessions included.
+
+## Running-timer badge
+
+While this device's timer runs, the launcher icon carries a badge. One Dart service (`app/lib/timer/timer_badge.dart`, owned by the shell, tested in `timer_badge_test.dart`) watches `DocumentSession.myTimer` — deliberately not foreign timers, which would make every synced device's icon cry wolf — and pushes over `com.lorands.cirrhy/badge`. All notification strings travel localized from the ARB files; the platform sides hold no literals. Per platform:
+
+- **Linux** (`my_application.cc`): swaps the window icon to `-running` (X11) and emits the Unity LauncherEntry count signal — KDE and most docks render it, stock GNOME Shell needs a dock extension, and it keys off the installed `.desktop` file (see above). Verified on this machine's build.
+- **macOS** (`MainFlutterWindow.swift`): swaps `NSApp.applicationIconImage` to `AppIconRunning`; nil restores the bundle icon. `dockTile.badgeLabel` was rejected — it renders as an unread-count bubble.
+- **Windows** (`flutter_window.cpp`): `ITaskbarList3::SetOverlayIcon` with `badge_overlay.ico`. Compiles untested, like the rest of the Windows target.
+- **Android** (`TimerBadge.kt`): a silent ongoing notification in a badge-enabled channel — launcher dot, live chronometer in the shade, tap opens the app. Android 13+ asks for `POST_NOTIFICATIONS` the first time a timer starts; refusal costs only the badge.
+- **iOS** (`AppDelegate.swift`): badge count 1, behind a `.badge`-only authorization prompt on first start; refusal costs only the badge.
 
 ## What Cirrhy is
 

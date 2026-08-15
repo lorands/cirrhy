@@ -21,8 +21,8 @@ here rasterises and rescales: every output is composed as SVG and rendered
 straight to its final pixel size, so a 16px favicon is as crisp as a 1024px
 store asset.
 
-Geometry and colour come from the Penpot library, page `08 · Brand & Logo`,
-card `App icon`. Measured off the 112px artboard:
+Geometry comes from the Penpot library, page `08 · Brand & Logo`, card
+`App icon`. Measured off the 112px artboard:
 
     tile corner radius   25 / 112      = 22.32% of the tile
     mark width           67.2 / 112    = 60%    of the tile
@@ -32,17 +32,26 @@ card `App icon`. Measured off the 112px artboard:
 The mark sits a hair below centre — that is the design, not a rounding error;
 the hands reach up and to the right, so optical centre is below geometric.
 
-Penpot names three variants; each platform gets the ones it can actually show:
+Each variant's tile is a top-left → bottom-right gradient between two stops of
+the brand ramp in `app/lib/theme/tokens.dart` (a flat tile read as a plain
+green blob at launcher sizes, 2026-08-15):
 
-    light   #E8F7F0 tile, #0B8560 mark    iOS light appearance
-    dark    #0B1512 tile, #34D399 mark    iOS dark appearance
-    solid   #0B8560 tile, #FFFFFF mark    everything with only one slot
+    light   #E8F7F0 → #C7EBDC tile, #0B8560 mark    iOS light appearance
+    dark    #182822 → #0B1512 tile, #34D399 mark    iOS dark appearance
+    solid   #2FB588 → #065F46 tile, #FFFFFF mark    everything with one slot
 
 Desktops and the Android launcher get `solid`: green reads on both a light and
 a dark shelf, where the pale `light` tile vanishes on white and `dark` vanishes
 on black. iOS is the one target that genuinely swaps, so it carries all three
 (plus the greyscale `tinted` appearance iOS 18 composites the user's colour
-onto).
+onto — that one stays flat, iOS wants luminance range there, not brand).
+
+Alongside every plain icon the script emits its **running-timer** companions —
+the same tile with a red recording dot in the lower-right corner — for the
+platforms that badge by swapping an image: the Linux hicolor tree gains
+`<id>-running` icons, macOS an `AppIconRunning` imageset for the dock, and
+Windows a `badge_overlay.ico` for the taskbar overlay (that one is the dot
+alone; Windows composites it over the live icon itself).
 
 Usage:
 
@@ -93,29 +102,44 @@ ADAPTIVE_SAFE = 72
 # Optical sizing. The mark is drawn as filled outlines whose thinnest lines
 # measure ~0.9 units across the mark's own 64.64-unit viewBox (measured off a
 # 2048px render, 25th percentile of scanline runs — the low percentiles are the
-# ones that cross a stroke square-on). Scaled down, those lines fall under a
-# pixel and antialias into a grey ghost: at 32px they are a quarter-pixel wide.
-# So below the size where a hairline still covers MIN_STROKE_PX, the path is
-# given a stroke of its own fill colour to make up the difference. The taper is
-# automatic — at 128px and above the boost is zero and the pixels are exactly
-# what the design draws. Anything smaller was unreadable before, not faithful.
+# ones that cross a stroke square-on). As an app icon those hairlines are built
+# up to a constant optical weight of LINE_UNITS (~3.4% of the mark's width) by
+# stroking the path in its own fill colour. Constant, not tapered by raster
+# size: an xxxhdpi launcher icon is 192px yet physically ten millimetres, so
+# pixel count stopped predicting how thick a line looks — the earlier px-tapered
+# boost left every launcher a green blob with a faint scribble on it
+# (2026-08-15). MIN_STROKE_PX stays as a floor for favicon-class sizes where
+# even LINE_UNITS falls under a pixel.
 HAIRLINE_UNITS = 0.9
+LINE_UNITS = 2.2
 MIN_STROKE_PX = 0.75
+
+# The running-timer badge: a recording dot (the theme's danger red) ringed in
+# white so it separates from the tile, tucked into the lower-right corner. All
+# fractions of the tile.
+BADGE_CENTER = 0.79
+BADGE_RADIUS = 0.145
+BADGE_RING = 0.045
+BADGE_FILL = "#DC2626"
+BADGE_RING_FILL = "#FFFFFF"
 
 
 @dataclass(frozen=True)
 class Variant:
-    tile: str
+    """A tile as a (top-left, bottom-right) gradient pair — equal stops mean
+    flat — and the mark's colour."""
+
+    tile: tuple[str, str]
     mark: str
 
 
 VARIANTS = {
-    "light": Variant(tile="#E8F7F0", mark="#0B8560"),
-    "dark": Variant(tile="#0B1512", mark="#34D399"),
-    "solid": Variant(tile="#0B8560", mark="#FFFFFF"),
+    "light": Variant(tile=("#E8F7F0", "#C7EBDC"), mark="#0B8560"),
+    "dark": Variant(tile=("#182822", "#0B1512"), mark="#34D399"),
+    "solid": Variant(tile=("#2FB588", "#065F46"), mark="#FFFFFF"),
     # iOS composites the user's tint over this one, so it wants maximum
-    # luminance range rather than brand colour.
-    "tinted": Variant(tile="#000000", mark="#FFFFFF"),
+    # luminance range rather than brand colour — flat black, no gradient.
+    "tinted": Variant(tile=("#000000", "#000000"), mark="#FFFFFF"),
 }
 
 
@@ -179,6 +203,7 @@ def compose(
     body: tuple[float, float, float, float] | None = None,
     radius: float = RADIUS,
     draw_tile: bool = True,
+    badge: bool = False,
     px: int | None = None,
 ) -> str:
     """Builds one square icon as SVG.
@@ -187,9 +212,9 @@ def compose(
     canvas. `radius` is a fraction of the body's width; pass 0 for the
     full-bleed square iOS and the Play Store want. `draw_tile=False` emits the
     mark alone on transparency, which is what an Android adaptive foreground
-    and its monochrome sibling are. `px` is the pixel size the result will be
-    rasterised at, and only affects the optical-size stroke boost; leave it
-    unset for output that stays vector.
+    and its monochrome sibling are. `badge` adds the running-timer dot. `px`
+    is the pixel size the result will be rasterised at, and only affects the
+    MIN_STROKE_PX floor; leave it unset for output that stays vector.
     """
     bx, by, bw, bh = body if body else (0.0, 0.0, canvas, canvas)
 
@@ -198,30 +223,102 @@ def compose(
     mx = bx + bw * MARK_LEFT
     my = by + bh * MARK_TOP
 
+    defs = ""
     tile = ""
     if draw_tile:
+        top, bottom = variant.tile
+        if top == bottom:
+            fill = top
+        else:
+            fill = "url(#tile)"
+            defs = (
+                '<defs><linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">'
+                f'<stop offset="0" stop-color="{top}"/>'
+                f'<stop offset="1" stop-color="{bottom}"/>'
+                "</linearGradient></defs>"
+            )
         rx = f' rx="{bw * radius:.4f}" ry="{bw * radius:.4f}"' if radius else ""
         tile = (
             f'<rect x="{bx:.4f}" y="{by:.4f}" width="{bw:.4f}" '
-            f'height="{bh:.4f}"{rx} fill="{variant.tile}"/>'
+            f'height="{bh:.4f}"{rx} fill="{fill}"/>'
         )
 
     mark = MARK_BODY.replace("fill:#000000", f"fill:{variant.mark}")
 
+    boost = LINE_UNITS - HAIRLINE_UNITS
     if px:
         mark_px = mw / canvas * px
-        hairline_px = HAIRLINE_UNITS / MARK_VB_W * mark_px
-        if hairline_px < MIN_STROKE_PX:
-            deficit = (MIN_STROKE_PX - hairline_px) * MARK_VB_W / mark_px
-            mark = thicken(mark, variant.mark, deficit)
+        line_px = LINE_UNITS / MARK_VB_W * mark_px
+        if line_px < MIN_STROKE_PX:
+            boost += (MIN_STROKE_PX - line_px) * MARK_VB_W / mark_px
+    mark = thicken(mark, variant.mark, boost)
+
+    dot = ""
+    if badge:
+        cx = bx + bw * BADGE_CENTER
+        cy = by + bh * BADGE_CENTER
+        dot = (
+            f'<circle cx="{cx:.4f}" cy="{cy:.4f}" '
+            f'r="{bw * BADGE_RADIUS:.4f}" fill="{BADGE_FILL}" '
+            f'stroke="{BADGE_RING_FILL}" stroke-width="{bw * BADGE_RING:.4f}"/>'
+        )
 
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas:g}" '
         f'height="{canvas:g}" viewBox="0 0 {canvas:g} {canvas:g}">'
-        f"{tile}"
+        f"{defs}{tile}"
         f'<svg x="{mx:.4f}" y="{my:.4f}" width="{mw:.4f}" height="{mh:.4f}" '
         f'viewBox="0 0 {MARK_VB_W} {MARK_VB_H}">{mark}</svg>'
-        f"</svg>"
+        f"{dot}</svg>"
+    )
+
+
+def compose_glyph(canvas: float, colour: str, *, width_frac: float,
+                  line_units: float, px: int | None = None) -> str:
+    """The mark alone, centred — Android's status-bar notification icon.
+
+    Its own composition rather than `compose(draw_tile=False)`: the adaptive
+    foreground sits inside the 72dp safe zone and status-bar icons are drawn
+    at 24dp, where that inset leaves an unreadable speck. `line_units` is
+    passed in because a silhouette this small wants more weight than the app
+    icon's LINE_UNITS.
+    """
+    mw = canvas * width_frac
+    mh = mw * MARK_ASPECT
+    mx = (canvas - mw) / 2
+    my = (canvas - mh) / 2
+
+    mark = MARK_BODY.replace("fill:#000000", f"fill:{colour}")
+    boost = line_units - HAIRLINE_UNITS
+    if px:
+        mark_px = mw / canvas * px
+        line_px = line_units / MARK_VB_W * mark_px
+        if line_px < MIN_STROKE_PX:
+            boost += (MIN_STROKE_PX - line_px) * MARK_VB_W / mark_px
+    mark = thicken(mark, colour, boost)
+
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas:g}" '
+        f'height="{canvas:g}" viewBox="0 0 {canvas:g} {canvas:g}">'
+        f'<svg x="{mx:.4f}" y="{my:.4f}" width="{mw:.4f}" height="{mh:.4f}" '
+        f'viewBox="0 0 {MARK_VB_W} {MARK_VB_H}">{mark}</svg></svg>'
+    )
+
+
+def compose_overlay(canvas: float) -> str:
+    """The badge dot alone, for Windows' taskbar overlay slot.
+
+    Windows draws the overlay over the taskbar icon itself, so unlike the
+    badged icons this is just the dot, sized to fill the (16px-class) canvas.
+    """
+    c = canvas / 2
+    ring = canvas * 0.11
+    r = canvas * 0.42 - ring / 2
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas:g}" '
+        f'height="{canvas:g}" viewBox="0 0 {canvas:g} {canvas:g}">'
+        f'<circle cx="{c:g}" cy="{c:g}" r="{r:.4f}" fill="{BADGE_FILL}" '
+        f'stroke="{BADGE_RING_FILL}" stroke-width="{ring:.4f}"/></svg>'
     )
 
 
@@ -320,7 +417,25 @@ def gen_macos() -> None:
     svg_for = lambda px: compose(1024, VARIANTS["solid"], body=body, px=px)
     for size in (16, 32, 64, 128, 256, 512, 1024):
         render(svg_for, d / f"app_icon_{size}.png", size)
-    print(f"  {d.relative_to(ROOT)}/ — 7 sizes, solid")
+
+    # The dock icon the runner swaps in while a timer runs
+    # (macos/Runner/MainFlutterWindow.swift). An image set rather than a
+    # second app-icon set: NSImage(named:) is how it is looked up.
+    running = d.parent / "AppIconRunning.imageset"
+    badged = lambda px: compose(1024, VARIANTS["solid"], body=body, badge=True, px=px)
+    render(badged, running / "app_icon_running_256.png", 256)
+    render(badged, running / "app_icon_running_512.png", 512)
+    (running / "Contents.json").write_text(
+        '{\n  "images" : [\n'
+        '    {\n      "filename" : "app_icon_running_256.png",\n'
+        '      "idiom" : "universal",\n      "scale" : "1x"\n    },\n'
+        '    {\n      "filename" : "app_icon_running_512.png",\n'
+        '      "idiom" : "universal",\n      "scale" : "2x"\n    }\n'
+        "  ],\n"
+        '  "info" : {\n    "author" : "xcode",\n    "version" : 1\n  }\n}\n',
+        encoding="utf-8",
+    )
+    print(f"  {d.relative_to(ROOT)}/ — 7 sizes, solid + AppIconRunning")
 
 
 def gen_android() -> None:
@@ -342,7 +457,7 @@ def gen_android() -> None:
     foreground = lambda px: compose(ADAPTIVE_CANVAS, solid, body=safe, draw_tile=False, px=px)
     # Android 13+ themed icons tint this by luminance, so it is the same
     # geometry drawn flat.
-    mono_variant = Variant(tile="#000000", mark="#FFFFFF")
+    mono_variant = Variant(tile=("#000000", "#000000"), mark="#FFFFFF")
     monochrome = lambda px: compose(ADAPTIVE_CANVAS, mono_variant, body=safe,
                                     draw_tile=False, px=px)
     for bucket, size in (("mdpi", 108), ("hdpi", 162), ("xhdpi", 216),
@@ -350,12 +465,20 @@ def gen_android() -> None:
         render(foreground, res / f"mipmap-{bucket}" / "ic_launcher_foreground.png", size)
         render(monochrome, res / f"mipmap-{bucket}" / "ic_launcher_monochrome.png", size)
 
-    (res / "values").mkdir(parents=True, exist_ok=True)
-    (res / "values" / "ic_launcher_background.xml").write_text(
+    # The adaptive background is the tile gradient as a drawable — a colour
+    # resource can only be flat. Angle 315 is Android's top-left → bottom-right.
+    stale_colour = res / "values" / "ic_launcher_background.xml"
+    if stale_colour.exists():
+        stale_colour.unlink()
+    (res / "drawable").mkdir(parents=True, exist_ok=True)
+    (res / "drawable" / "ic_launcher_background.xml").write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n'
-        "<resources>\n"
-        f'    <color name="ic_launcher_background">{solid.tile}</color>\n'
-        "</resources>\n",
+        '<shape xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        "    <gradient\n"
+        f'        android:startColor="{solid.tile[0]}"\n'
+        f'        android:endColor="{solid.tile[1]}"\n'
+        '        android:angle="315" />\n'
+        "</shape>\n",
         encoding="utf-8",
     )
 
@@ -367,43 +490,62 @@ def gen_android() -> None:
     (anydpi / "ic_launcher.xml").write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '    <background android:drawable="@color/ic_launcher_background"/>\n'
+        '    <background android:drawable="@drawable/ic_launcher_background"/>\n'
         '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n'
         '    <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>\n'
         "</adaptive-icon>\n",
         encoding="utf-8",
     )
 
+    # Status-bar icon for the running-timer notification (TimerBadge.kt):
+    # white silhouette on transparency, as the status bar requires.
+    stat = lambda px: compose_glyph(1024, "#FFFFFF", width_frac=0.92,
+                                    line_units=3.5, px=px)
+    for bucket, size in (("mdpi", 24), ("hdpi", 36), ("xhdpi", 48),
+                         ("xxhdpi", 72), ("xxxhdpi", 96)):
+        render(stat, res / f"drawable-{bucket}" / "ic_stat_timer.png", size)
+
     # Play Console listing icon: 512 square, no transparency, no baked mask.
     render(lambda px: compose(1024, solid, radius=0, px=px),
            ICON_DIR / "play-store-512.png", 512, opaque=True)
-    print("  app/android/.../res/ — legacy, adaptive, monochrome + play-store-512.png")
+    print("  app/android/.../res/ — legacy, adaptive, monochrome, ic_stat_timer"
+          " + play-store-512.png")
 
 
 def gen_windows() -> None:
     """A multi-resolution .ico; Windows picks the size, and never masks."""
-    out = APP / "windows" / "runner" / "resources" / "app_icon.ico"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    svg_for = lambda px: compose(1024, VARIANTS["solid"], px=px)
-    staged = [render(svg_for, out.parent / f".ico-{s}.png", s)
-              for s in (16, 20, 24, 32, 40, 48, 64, 128, 256)]
-    run(["magick", *[str(p) for p in staged], str(out)])
-    for p in staged:
-        p.unlink()
-    print(f"  {out.relative_to(ROOT)} — 9 sizes")
+    d = APP / "windows" / "runner" / "resources"
+    d.mkdir(parents=True, exist_ok=True)
+
+    def ico(out: Path, svg_for: Callable[[int], str], sizes: tuple[int, ...]) -> None:
+        staged = [render(svg_for, out.parent / f".ico-{s}.png", s) for s in sizes]
+        run(["magick", *[str(p) for p in staged], str(out)])
+        for p in staged:
+            p.unlink()
+
+    ico(d / "app_icon.ico", lambda px: compose(1024, VARIANTS["solid"], px=px),
+        (16, 20, 24, 32, 40, 48, 64, 128, 256))
+    # The running-timer overlay the runner hands to ITaskbarList3 — the badge
+    # dot alone, in the small-icon sizes the overlay slot is drawn at.
+    ico(d / "badge_overlay.ico", lambda px: compose_overlay(1024),
+        (16, 20, 24, 32))
+    print(f"  {d.relative_to(ROOT)}/ — app_icon.ico (9 sizes), badge_overlay.ico (4)")
 
 
 def gen_linux() -> None:
     """A hicolor tree the runner reads at run time and a package can install."""
     d = APP / "linux" / "runner" / "resources"
-    svg_for = lambda px: compose(1024, VARIANTS["solid"], px=px)
-    for size in (16, 22, 24, 32, 48, 64, 128, 256, 512):
-        render(svg_for, d / "icons" / "hicolor" / f"{size}x{size}" / "apps"
-               / f"{APPLICATION_ID}.png", size)
-
-    scalable = d / "icons" / "hicolor" / "scalable" / "apps" / f"{APPLICATION_ID}.svg"
-    scalable.parent.mkdir(parents=True, exist_ok=True)
-    scalable.write_text(compose(512, VARIANTS["solid"]), encoding="utf-8")
+    # The plain icon and its running-timer companion; my_application.cc swaps
+    # the window icon between the two by name.
+    for name, badge in ((APPLICATION_ID, False), (f"{APPLICATION_ID}-running", True)):
+        svg_for = lambda px, b=badge: compose(1024, VARIANTS["solid"], badge=b, px=px)
+        for size in (16, 22, 24, 32, 48, 64, 128, 256, 512):
+            render(svg_for, d / "icons" / "hicolor" / f"{size}x{size}" / "apps"
+                   / f"{name}.png", size)
+        scalable = d / "icons" / "hicolor" / "scalable" / "apps" / f"{name}.svg"
+        scalable.parent.mkdir(parents=True, exist_ok=True)
+        scalable.write_text(compose(512, VARIANTS["solid"], badge=badge),
+                            encoding="utf-8")
 
     desktop = d / f"{APPLICATION_ID}.desktop"
     desktop.write_text(
@@ -420,7 +562,7 @@ def gen_linux() -> None:
         f"StartupWMClass={APPLICATION_ID}\n",
         encoding="utf-8",
     )
-    print(f"  {d.relative_to(ROOT)}/ — hicolor 16–512, scalable, .desktop")
+    print(f"  {d.relative_to(ROOT)}/ — hicolor 16–512 + -running, scalable, .desktop")
 
 
 # --- Entry point ------------------------------------------------------------

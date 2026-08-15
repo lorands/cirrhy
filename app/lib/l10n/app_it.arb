@@ -34,6 +34,8 @@
   "timerSelectTask": "Seleziona attività",
   "timerStart": "Avvia",
   "timerRunning": "In corso",
+  "timerBadgeTitle": "Timer in corso",
+  "timerBadgeChannelName": "Timer attivo",
   "timerNoDescription": "(nessuna descrizione)",
   "timerToday": "Oggi",
   "timerYesterday": "Ieri",

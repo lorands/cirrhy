@@ -136,6 +136,14 @@
   "@timerRunning": {
     "description": "Small status label next to a coloured dot on the timer card, shown while this device's timer is running."
   },
+  "timerBadgeTitle": "Timer running",
+  "@timerBadgeTitle": {
+    "description": "Title of the Android notification shown while this device's timer is running; it is what puts the badge on the launcher icon. The notification renders the elapsed time itself, so this must not mention a duration."
+  },
+  "timerBadgeChannelName": "Running timer",
+  "@timerBadgeChannelName": {
+    "description": "Name of the Android notification channel the running-timer notification files under, shown in the system's notification settings for the app. A category name, not a status line."
+  },
   "timerNoDescription": "(no description)",
   "@timerNoDescription": {
     "description": "Placeholder shown in place of a time entry's description, on the running card or in the entry list, when the entry was logged with no description at all."

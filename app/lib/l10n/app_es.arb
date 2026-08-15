@@ -34,6 +34,8 @@
   "timerSelectTask": "Elegir tarea",
   "timerStart": "Iniciar",
   "timerRunning": "En marcha",
+  "timerBadgeTitle": "Temporizador en marcha",
+  "timerBadgeChannelName": "Temporizador activo",
   "timerNoDescription": "(sin descripción)",
   "timerToday": "Hoy",
   "timerYesterday": "Ayer",

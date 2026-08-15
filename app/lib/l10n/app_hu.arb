@@ -34,6 +34,8 @@
   "timerSelectTask": "Feladat kiválasztása",
   "timerStart": "Indítás",
   "timerRunning": "Fut",
+  "timerBadgeTitle": "Fut az időmérő",
+  "timerBadgeChannelName": "Futó időmérő",
   "timerNoDescription": "(nincs leírás)",
   "timerToday": "Ma",
   "timerYesterday": "Tegnap",

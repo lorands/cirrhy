@@ -3,8 +3,10 @@
 
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
 
 #include <memory>
+#include <string>
 
 #include "win32_window.h"
 
@@ -28,6 +30,12 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // The running-timer badge: com.lorands.cirrhy/badge from the Dart side,
+  // rendered as an ITaskbarList3 overlay icon (badge_overlay.ico).
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      badge_channel_;
+  void SetTimerOverlay(bool running, const std::wstring& description);
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

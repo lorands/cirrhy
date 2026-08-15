@@ -21,6 +21,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var documents: DocumentFolders? = null
+    private var badge: TimerBadge? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -30,6 +31,13 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             DocumentFolders.CHANNEL,
         ).setMethodCallHandler(folders)
+
+        val timerBadge = TimerBadge(this)
+        badge = timerBadge
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            TimerBadge.CHANNEL,
+        ).setMethodCallHandler(timerBadge)
     }
 
     // The folder picker is an activity, so its answer arrives here.
@@ -40,9 +48,20 @@ class MainActivity : FlutterActivity() {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
+    // The notification-permission prompt's answer arrives the same way.
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        if (badge?.onRequestPermissionsResult(requestCode, grantResults) == true) return
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
     override fun onDestroy() {
         documents?.dispose()
         documents = null
+        badge = null
         super.onDestroy()
     }
 }

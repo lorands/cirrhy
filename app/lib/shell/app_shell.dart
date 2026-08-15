@@ -28,6 +28,7 @@ import '../sync/folder_unreachable_dialog.dart';
 import '../sync/sync_status_footer.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.dart';
+import '../timer/timer_badge.dart';
 import '../timer/timer_screen.dart';
 import 'watermark.dart';
 
@@ -88,10 +89,23 @@ class _AppShellState extends State<AppShell> {
 
   bool _unavailableDialogOpen = false;
 
+  /// The launcher-icon mirror of this device's running timer. Owned here
+  /// because the shell is the one widget alive for the whole signed-in life
+  /// of the app, on every platform.
+  final TimerBadge _badge = TimerBadge();
+
   @override
   void initState() {
     super.initState();
     _attach(widget.session);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-runs when the locale changes, keeping the notification's strings in
+    // the language the app shows.
+    _badge.localize(AppLocalizations.of(context));
   }
 
   @override
@@ -105,6 +119,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    _badge.dispose();
     widget.session?.removeListener(_onSessionEvent);
     super.dispose();
   }
@@ -116,6 +131,7 @@ class _AppShellState extends State<AppShell> {
     _seenRefresh = session?.lastRefreshed;
     _seenStatus = session?.status;
     session?.addListener(_onSessionEvent);
+    _badge.attach(session);
   }
 
   void _onSessionEvent() {

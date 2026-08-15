@@ -86,23 +86,47 @@ fi
 
 # --- bump -------------------------------------------------------------------
 #
-# Idempotent on purpose: a pubspec already at the version (a bump committed by
-# hand, or a --force re-run after a failed push) skips straight to tagging.
+# The version lives in two places: pubspec.yaml and the About screen's
+# appVersion constant, which test/about/version_test.dart keeps honest —
+# bumping one without the other fails the suite, which is how v0.2.1 died in
+# CI. Each file is checked on its own, so a re-run over a half-bumped state
+# repairs the one that lags instead of skipping both.
 
 CURRENT="$(sed -n 's/^version: *//p' pubspec.yaml)"
 BASE="${CURRENT%%+*}"
 BUILD="${CURRENT#*+}"; [[ "$BUILD" == "$CURRENT" ]] && BUILD=0
+CHANGED=0
 
 if [[ "$BASE" == "$VERSION" ]]; then
-  say "pubspec already says $CURRENT — nothing to bump"
+  say "pubspec already says $CURRENT"
 else
   NEW="$VERSION+$((BUILD + 1))"
   # The .bak dance keeps BSD sed happy, so this also runs on the MacBook.
   sed -i.bak "s/^version: .*/version: $NEW/" pubspec.yaml && rm pubspec.yaml.bak
-  git add pubspec.yaml
-  git commit -m "Release $VERSION"
-  say "bumped pubspec to $NEW and committed"
+  say "pubspec: $CURRENT → $NEW"
+  CHANGED=1
 fi
+
+if grep -q "^const String appVersion = '$VERSION';" lib/about/version.dart; then
+  say "appVersion already says $VERSION"
+else
+  sed -i.bak "s/^const String appVersion = .*/const String appVersion = '$VERSION';/" \
+    lib/about/version.dart && rm lib/about/version.dart.bak
+  say "appVersion → $VERSION"
+  CHANGED=1
+fi
+
+if (( CHANGED )); then
+  git add pubspec.yaml lib/about/version.dart
+  git commit -m "Release $VERSION"
+  say "committed the bump"
+fi
+
+# The same gate CI's verify job runs, while it is still cheap to fix — a
+# failure here leaves the bump commit in place; fix, commit, re-run, and the
+# bump step above just agrees and moves on.
+say "running the test suite before anything leaves this machine"
+"$REPO_ROOT/tool/test.sh"
 
 # --- tag and push -----------------------------------------------------------
 

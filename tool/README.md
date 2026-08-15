@@ -109,13 +109,16 @@ tool/release.sh 0.2.0            # bump, commit, tag v0.2.0, push, store package
 tool/release.sh 0.2.0 --force    # redo a tag that failed CI's verify
 ```
 
-One command in the order that works: bumps `app/pubspec.yaml` to the version
-(and its `+N` build number, which the Play Console requires to grow with
-every upload), commits, tags `v<version>` and pushes branch and tag. The tag
-push is the release — CI verifies the tag against pubspec, builds the four
-platform packages and publishes the GitHub release. Tagging before bumping is
-exactly what the verify job refuses, and exactly the mistake this script
-makes impossible.
+One command in the order that works: bumps the version everywhere it lives —
+`app/pubspec.yaml` (and its `+N` build number, which the Play Console
+requires to grow with every upload) *and* the About screen's `appVersion`
+constant in `app/lib/about/version.dart`, which a test pins to pubspec —
+commits, runs the full test suite locally, then tags `v<version>` and pushes
+branch and tag. The tag push is the release — CI verifies the tag against
+pubspec, re-runs the suite, builds the four platform packages and publishes
+the GitHub release. Tagging before bumping is exactly what the verify job
+refuses, and exactly the mistake this script makes impossible; the local
+suite run catches what a half-bump would break while it still costs seconds.
 
 `--force` moves an existing tag — the recovery for one that failed verify —
 and force-pushes it; CI adopts the existing GitHub release and replaces its

@@ -138,7 +138,7 @@ Two engine invariants that tests enforce and any change must preserve: the merge
 
 ## License and naming
 
-Apache 2.0; identity is rooted at `com.lorands.cirrhy`. Full detail in `DESIGN.md` §7. Day-to-day rules:
+Apache 2.0; identity is rooted at `com.lorands.cirrhy` — **except the Apple bundle ID, which is `com.lorands.cirrhyapp`** (a free personal team had burned the original App ID; DESIGN.md §7 has the full story and the rule it produced). The method channel names deliberately did not follow. Full detail in `DESIGN.md` §7. Day-to-day rules:
 
 - New source files get the standard short Apache header, `Copyright 2026 Lóránd Somogyi` — accented. The ASCII `lorands`/`lorand.somogyi` in the domain and email are transliterations, not the name. Keep sources UTF-8.
 - `LICENSE` is verbatim upstream text; never edit it, including its appendix placeholders.

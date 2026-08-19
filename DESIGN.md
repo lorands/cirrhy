@@ -213,16 +213,22 @@ Apache License 2.0. `LICENSE` at the repo root is the verbatim upstream text and
 - **No `NOTICE` file, deliberately.** Apache 2.0 doesn't require one, and adding one obliges every downstream redistributor to carry it under §4(d). Add one only to carry a genuine third-party attribution.
 - **Dependency licenses constrain the still-open stack.** Apache 2.0 is one-way incompatible with GPLv2, so GPLv2-only code cannot be incorporated. GPLv3/LGPLv3 are compatible. Check before adopting any framework.
 
-Identity is rooted at the owned domain `lorands.com`, reverse-DNS: **`com.lorands.cirrhy`**.
+Identity is rooted at the owned domain `lorands.com`, reverse-DNS: **`com.lorands.cirrhy`** — except on Apple platforms, where it is **`com.lorands.cirrhyapp`**.
 
 | Target | Identifier |
 | --- | --- |
 | Android `applicationId` | `com.lorands.cirrhy` |
-| Apple bundle ID (iOS + macOS) | `com.lorands.cirrhy` |
+| Apple bundle ID (iOS + macOS) | `com.lorands.cirrhyapp` |
 | JVM/Kotlin package root | `com.lorands.cirrhy` |
 | Flatpak app ID + `.desktop`/metainfo | `com.lorands.Cirrhy` |
 
 Flatpak convention capitalizes the final segment, and the app ID must match the `.desktop` and AppStream metainfo filenames exactly. **Android `applicationId` and Apple bundle IDs are permanent once published** — they cannot be changed without a new listing and the loss of the install base.
+
+**The Apple split is scar tissue, not a preference** (2026-08-18). Apple App IDs are globally unique across *every* team, free personal teams included, and Xcode registers one silently on the first device build. Building onto an iPhone under the author's free personal team on 2026-08-14 therefore registered `com.lorands.cirrhy` to that team; the App Store listing is published under a third party's team (`docs/release/app-store.md`), which consequently could not register it, and a free personal team has no developer-portal access from which the App ID could be deleted. The choice was days of Apple Developer Support with no guaranteed outcome against a permanent change to an identifier no user ever sees. iOS and macOS moved together so the two can still share one App Store Connect record as a Universal Purchase, which requires matching bundle IDs. Android and Linux stayed: their namespaces are independent of Apple's, and moving Android's `applicationId` would orphan every installed copy to fix nothing.
+
+> The generalizable rule, learned expensively: **never let a free personal team build a bundle ID you intend to publish under someone else's team.** Register the App ID under the publishing team first.
+
+The method channel names did **not** follow — they remain `com.lorands.cirrhy/documents`, `/document-changes` and `/badge` on all five platforms. They are internal strings that happen to look like identity; renaming them would mean editing every platform side to change nothing observable.
 
 Ecosystems that don't use reverse-DNS aren't bound: a Rust crate is `cirrhy`, a Go module is its repo path.
 

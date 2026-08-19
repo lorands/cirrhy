@@ -255,6 +255,19 @@ silent English. What the tests cannot verify is the translations themselves —
 the shipped ones await a native speaker's eye, and corrections are as welcome
 as new languages.
 
+## Privacy and support
+
+Cirrhy collects nothing — no account, no server, no analytics, and no network
+code at all. The full statement, down to which four keys live in the device's
+own preference store and why the per-device identifier is a random UUID, is in
+[docs/legal/privacy-policy.md](docs/legal/privacy-policy.md).
+
+Bugs and questions go to [Issues](https://github.com/lorands/cirrhy/issues).
+[docs/legal/support.md](docs/legal/support.md) covers what makes a report
+actionable, what is deliberate rather than broken, and how to recover data
+*without* copying a backup over `cirrhy.json` — the one recovery move that
+looks right and is wrong.
+
 ## License
 
 [Apache 2.0](LICENSE). Copyright 2026 Lóránd Somogyi.

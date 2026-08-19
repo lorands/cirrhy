@@ -32,6 +32,31 @@ void main() {
     expect(actual, shipped);
   });
 
+  test('the App Store advertises exactly the shipped languages', () {
+    // gen-l10n creates no .lproj folders, so the store page's language list is
+    // read from CFBundleLocalizations and nowhere else. That plist is the only
+    // place outside this file a new language has to be added to, which is
+    // exactly why it is asserted rather than trusted — see
+    // docs/release/app-store.md.
+    final plist = File('ios/Runner/Info.plist');
+    expect(plist.existsSync(), isTrue, reason: 'missing ${plist.path}');
+
+    final array = RegExp(
+      r'<key>CFBundleLocalizations</key>\s*<array>(.*?)</array>',
+      dotAll: true,
+    ).firstMatch(plist.readAsStringSync());
+    expect(
+      array,
+      isNotNull,
+      reason: 'Info.plist declares no CFBundleLocalizations',
+    );
+
+    final declared = RegExp(
+      r'<string>(\w+)</string>',
+    ).allMatches(array!.group(1)!).map((m) => m.group(1)!).toSet();
+    expect(declared, shipped);
+  });
+
   test('no language is missing a key the template defines', () {
     // gen-l10n is happy to emit a locale that silently inherits English for
     // anything it forgot. Comparing the ARB files directly is the only way to

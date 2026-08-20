@@ -54,6 +54,12 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Drives the real app on a simulator to capture App Store screenshots at
+  # exact device resolution — tool/gen_screenshots.sh. Not used by tool/test.sh,
+  # which only runs test/.
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
 
 flutter:

@@ -191,3 +191,24 @@ including the running-timer companions (the badged icons for the Linux and
 macOS swap, Windows' overlay dot, Android's notification glyph). See the
 script's header and the App icons section of `CLAUDE.md` — the geometry comes
 from Penpot and is not to be nudged by hand.
+
+## Store screenshots
+
+```sh
+tool/gen_screenshots.sh                 # both required App Store sizes
+tool/gen_screenshots.sh --iphone        # only the 6.9" set
+tool/gen_screenshots.sh --locale hu     # a localized set
+```
+
+macOS only. Runs the real app on an iPhone 16 Pro Max and an iPad Pro 13-inch
+simulator, against a seeded copy of `docs/reporting/cirrhy.json`, and taps
+between the tabs — `app/integration_test/screenshots_test.dart` does the
+driving and `tool/gen_screenshot_seed.py` builds the document. What lands in
+`app/build/screenshots/` is the shipping UI at exact device resolution, and
+each file's pixel size is asserted before the script reports it, because
+Apple rejects an upload whose dimensions are a few pixels out.
+
+Generated rather than hand-captured for the same reason as the icons: a
+screenshot taken by hand is one nobody can reproduce next release. Rerun per
+release — the seed shifts the example document so the newest entry ended two
+hours ago, and a stale set shows a stale week.

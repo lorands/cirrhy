@@ -139,10 +139,15 @@ encryption. Once `ITSAppUsesNonExemptEncryption` is set to `false` in
 Required for the sizes Apple currently mandates: **iPhone 6.9"**, and
 **iPad 13"** for as long as `TARGETED_DEVICE_FAMILY` stays `"1,2"`.
 
-`docs/screenshots/` already holds the README set, but those are the wrong
-dimensions for the store. Capture fresh ones from the simulator — Timer,
-Reports, Projects, and the entry editor, in that order, since the first two are
-what appears without scrolling on the product page.
+Generated, not captured by hand:
+
+```sh
+tool/gen_screenshots.sh            # both sizes into app/build/screenshots/
+```
+
+Do **not** reuse `docs/screenshots/` — that is the README set, taken on an
+Android phone at 1080×2400. Wrong aspect ratio, and another platform's status
+bar in App Store metadata is a risk not worth taking.
 
 ## Before submitting
 

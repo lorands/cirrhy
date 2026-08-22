@@ -186,7 +186,7 @@ Size is not a concern: a heavy user generates a few thousand entries a year.
 
 **Flutter**, with the storage and merge engine as a **pure-Dart package with zero UI dependencies**, unit-tested independently of any app.
 
-Realised as a pub workspace: `app/` (Flutter, five targets) and `packages/cirrhy_merge/` (the engine). The app depends on the engine; the engine depends on nothing but `crypto`. Built and tested against Flutter 3.44.8 / Dart 3.12.2.
+Realised as a pub workspace: `app/` (Flutter, five targets) and `packages/cirrhy_merge/` (the engine). The app depends on the engine; the engine depends on nothing but `crypto`. Built and tested against Flutter 3.47.1 / Dart 3.13.1.
 
 Rationale:
 

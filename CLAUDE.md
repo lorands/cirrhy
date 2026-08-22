@@ -9,12 +9,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `packages/cirrhy_merge` — the storage and merge engine. Pure Dart, zero UI dependencies, only `crypto`. This is where the data-loss risk lives; it is fully tested headless.
 - `app` — the Flutter app, five targets. Depends on the engine; the engine never depends on it.
 
-Built against Flutter 3.44.8 / Dart 3.12.2. Run everything from the repo root:
+Built against Flutter 3.47.1 / Dart 3.13.1. Run everything from the repo root:
 
 ```sh
 flutter pub get                        # resolves the whole workspace; also runs gen-l10n
 tool/check.sh                          # analyze + report formatting
-tool/test.sh                           # engine (51 tests) then app (306)
+tool/test.sh                           # engine (51 tests) then app (313)
 
 tool/dev.sh                            # desktop + mobile side by side, one hot reload
 tool/run-android.sh                    # start one frontend; run-{linux,macos,ios,windows} too

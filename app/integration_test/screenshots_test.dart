@@ -41,8 +41,34 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Absolute host path to the document to display. The simulator shares the
-/// Mac's filesystem, so it can read it directly.
+/// Mac's filesystem, so it can read it directly. An Android emulator cannot
+/// see the host at all, so there [seedOnDevice] is what exists instead.
 const seedPath = String.fromEnvironment('CIRRHY_SEED');
+
+/// Where tool/gen_screenshots.sh adb-pushes the seed on Android. The app's own
+/// external files directory is the one place adb can write and the app can
+/// read back without asking for a runtime permission.
+const seedOnDevice = 'cirrhy-seed.json';
+
+/// The seed, wherever this platform keeps it.
+Future<File> resolveSeed() async {
+  if (seedPath.isNotEmpty) {
+    final host = File(seedPath);
+    if (host.existsSync()) return host;
+  }
+  if (Platform.isAndroid) {
+    final external = await getExternalStorageDirectory();
+    if (external != null) {
+      final pushed = File('${external.path}/$seedOnDevice');
+      if (pushed.existsSync()) return pushed;
+    }
+  }
+  fail(
+    'no seed document — the simulator reads --dart-define=CIRRHY_SEED, and '
+    'Android reads what tool/gen_screenshots.sh pushed to $seedOnDevice. '
+    'Run the script rather than flutter drive directly.',
+  );
+}
 
 /// Which language to render the UI in — the store listing can carry a
 /// screenshot set per locale.
@@ -52,7 +78,7 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('capture the store screenshots', (tester) async {
-    expect(seedPath, isNotEmpty, reason: 'pass --dart-define=CIRRHY_SEED=...');
+    final seed = await resolveSeed();
 
     // A real directory inside the app's own container, holding a copy of the
     // seed. The app then opens it exactly as it would a user's folder.
@@ -60,7 +86,7 @@ void main() {
     final folder = Directory('${support.path}/screenshot-document');
     if (folder.existsSync()) folder.deleteSync(recursive: true);
     await folder.create(recursive: true);
-    await File(seedPath).copy('${folder.path}/cirrhy.json');
+    await seed.copy('${folder.path}/cirrhy.json');
 
     SharedPreferences.setMockInitialValues({
       'settings.documentLocation': DocumentLocation(

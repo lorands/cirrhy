@@ -1,0 +1,45 @@
+# Builds the product site (landing page + the legal pages the store listings
+# link to) and publishes it to GitHub Pages. The legal text stays canonical in
+# docs/legal/; tool/gen_site.sh renders it, so this job is the only copy step.
+name: site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - docs/legal/**
+      - docs/screenshots/**
+      - tool/gen_site.sh
+      - .github/workflows/site.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y pandoc
+      - run: tool/gen_site.sh build/site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

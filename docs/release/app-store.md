@@ -88,6 +88,13 @@ the ones that are expensive to revisit:
    ([privacy](../legal/privacy-policy.md), [support](../legal/support.md)),
    which is the default; the publisher may prefer them on their own domain, in
    which case those pages move and this repo keeps the canonical text.
+   The product site (`site/`, built by `tool/gen_site.sh`, deployed to GitHub
+   Pages by `.github/workflows/site.yml`) renders those same files — plus
+   `docs/legal/terms.md`, which states that Apple's Standard EULA applies — at
+   `https://lorands.github.io/cirrhy/{privacy,support,terms}/`. Pages must be
+   enabled once (Settings → Pages → Source: GitHub Actions) before the listing
+   URLs resolve. A custom domain later is a `CNAME` file in `site/`, and the
+   three listing URLs change with it.
 
 ### 4. Repo changes
 

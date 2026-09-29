@@ -22,9 +22,9 @@ bracketed placeholders before submitting.
 | Secondary category | Business |
 | Copyright | `2026 Lóránd Somogyi` |
 | Age rating | 4+ — every questionnaire answer is *None* |
-| Privacy Policy URL | `https://github.com/lorands/cirrhy/blob/main/docs/legal/privacy-policy.md` |
-| Support URL | `https://github.com/lorands/cirrhy/blob/main/docs/legal/support.md` |
-| Marketing URL | `https://github.com/lorands/cirrhy` |
+| Privacy Policy URL | `https://lorands.github.io/cirrhy/privacy/` |
+| Support URL | `https://lorands.github.io/cirrhy/support/` |
+| Marketing URL | `https://lorands.github.io/cirrhy/` |
 
 ## Promotional text
 

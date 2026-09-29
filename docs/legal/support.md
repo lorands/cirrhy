@@ -21,6 +21,21 @@ What makes a report actionable:
 
 You can write in English or Hungarian.
 
+## Trying it with sample data
+
+Cirrhy asks for a folder before it does anything else, and an empty folder
+works fine — it creates `cirrhy.json` there on the first save. To see it with a
+year of realistic data instead:
+
+1. On the iPhone or iPad, open
+   **<https://lorands.github.io/cirrhy/sample/cirrhy.json>** in Safari, tap
+   the Share button, choose **Save to Files**, and save it into a new folder —
+   for example *On My iPhone → Cirrhy Sample*.
+2. Open Cirrhy, tap the folder button, and pick that folder.
+
+The app opens the document it finds there instead of starting a new one. The
+data is invented: three clients, seven projects and about 1,400 entries.
+
 ## If your data looks wrong
 
 Cirrhy takes a backup into app-private storage before writes it cannot make

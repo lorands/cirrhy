@@ -104,10 +104,16 @@ Cirrhy is free and open-source software, Apache 2.0, copyright 2026 Lóránd
 Somogyi. The complete source — including every line that touches your data — is
 at <https://github.com/lorands/cirrhy> and can be audited by anyone.
 
-The App Store listing is published by **Appific Kft.** (Appific Korlátolt
-Felelősségű Társaság), under a distribution arrangement with the author.
-Appific receives no user data from the app, for the same reason nobody else
-does: the app transmits none.
+The App Store and Play Store listings are both published by **Appific Kft.**
+(Appific Korlátolt Felelősségű Társaság), under a distribution arrangement with
+the author. Appific receives no user data from the app, for the same reason
+nobody else does: the app transmits none.
+
+Apple and Google receive whatever their own stores record about a download —
+that a purchase or install happened, on which account. That is a transaction
+between you and the store, it happens before the app runs, and neither the
+author nor the publisher can see inside it. The app itself reports nothing back
+to either store: no analytics, no install pings, no crash reporting.
 
 ## Changes to this policy
 

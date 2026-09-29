@@ -46,6 +46,11 @@ on black. iOS is the one target that genuinely swaps, so it carries all three
 (plus the greyscale `tinted` appearance iOS 18 composites the user's colour
 onto — that one stays flat, iOS wants luminance range there, not brand).
 
+Two Play Console listing assets come out of the same source, so the store page
+and the launcher cannot drift apart: `play-store-512.png` (the 512 listing
+icon) and `play-feature-graphic.png` (the mandatory 1024x500 banner). Both land
+in `assets/icon/` — they are uploaded to the Console by hand, never bundled.
+
 Alongside every plain icon the script emits its **running-timer** companions —
 the same tile with a red recording dot in the lower-right corner — for the
 platforms that badge by swapping an image: the Linux hicolor tree gains
@@ -273,6 +278,50 @@ def compose(
     )
 
 
+def compose_banner(width: float, height: float, variant: Variant,
+                   *, mark_frac: float = 0.62) -> str:
+    """The Play Console's feature graphic — the mark centred on the brand
+    gradient, at 1024x500.
+
+    Deliberately wordless. Two reasons, and the second is the load-bearing
+    one: Play overlays the app title over this graphic in several placements
+    and crops the sides in others, so text here is at best duplicated and at
+    worst cut in half; and typesetting "Cirrhy" would make the output depend
+    on which fonts the machine running this script happens to have, which is
+    the exact reproducibility the generated-not-hand-made rule exists to
+    protect. The mark is centred for the same cropping reason.
+
+    `mark_frac` is the mark's height as a fraction of the graphic's — the tile
+    fractions above are all relative to a square and do not transfer.
+    """
+    top, bottom = variant.tile
+    defs = (
+        '<defs><linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">'
+        f'<stop offset="0" stop-color="{top}"/>'
+        f'<stop offset="1" stop-color="{bottom}"/>'
+        "</linearGradient></defs>"
+    )
+
+    mh = height * mark_frac
+    mw = mh / MARK_ASPECT
+    mx = (width - mw) / 2
+    my = (height - mh) / 2
+
+    mark = MARK_BODY.replace("fill:#000000", f"fill:{variant.mark}")
+    # No MIN_STROKE_PX arithmetic: the mark lands ~320px wide here, where
+    # LINE_UNITS is a comfortable eleven pixels and the floor cannot bind.
+    mark = thicken(mark, variant.mark, LINE_UNITS - HAIRLINE_UNITS)
+
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:g}" '
+        f'height="{height:g}" viewBox="0 0 {width:g} {height:g}">'
+        f'{defs}<rect width="{width:g}" height="{height:g}" fill="url(#tile)"/>'
+        f'<svg x="{mx:.4f}" y="{my:.4f}" width="{mw:.4f}" height="{mh:.4f}" '
+        f'viewBox="0 0 {MARK_VB_W} {MARK_VB_H}">{mark}</svg>'
+        "</svg>"
+    )
+
+
 def compose_glyph(canvas: float, colour: str, *, width_frac: float,
                   line_units: float, px: int | None = None) -> str:
     """The mark alone, centred — Android's status-bar notification icon.
@@ -353,6 +402,24 @@ def render(svg_for: Callable[[int], str], out: Path, size: int, *, opaque: bool 
              "-colorspace", "sRGB", "-type", "TrueColor", "-strip",
              "-define", "png:color-type=2", "-define", "png:exclude-chunk=date,time",
              str(out)])
+    return out
+
+
+def render_wide(svg: str, out: Path, width: int, height: int) -> Path:
+    """Rasterises a non-square composition — the Play feature graphic is the
+    only one, and it is emphatically not square."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    scratch = out.with_suffix(".svg.tmp")
+    scratch.write_text(svg, encoding="utf-8")
+    run(["rsvg-convert", "-w", str(width), "-h", str(height), "-o", str(out), str(scratch)])
+    scratch.unlink()
+    # Play requires "JPEG or 24-bit PNG (no alpha)" here, and rsvg always
+    # writes RGBA. Same flags as the opaque branch of render(), same reason
+    # for -strip: byte-identical output across runs.
+    run(["magick", str(out), "-background", "white", "-alpha", "remove", "-alpha", "off",
+         "-colorspace", "sRGB", "-type", "TrueColor", "-strip",
+         "-define", "png:color-type=2", "-define", "png:exclude-chunk=date,time",
+         str(out)])
     return out
 
 
@@ -508,8 +575,14 @@ def gen_android() -> None:
     # Play Console listing icon: 512 square, no transparency, no baked mask.
     render(lambda px: compose(1024, solid, radius=0, px=px),
            ICON_DIR / "play-store-512.png", 512, opaque=True)
-    print("  app/android/.../res/ — legacy, adaptive, monochrome, ic_stat_timer"
-          " + play-store-512.png")
+
+    # Play Console feature graphic: 1024x500, required on every listing, and
+    # the one store asset that is not a square.
+    render_wide(compose_banner(1024, 500, solid),
+                ICON_DIR / "play-feature-graphic.png", 1024, 500)
+
+    print("  app/android/.../res/ — legacy, adaptive, monochrome, ic_stat_timer")
+    print("  assets/icon/ — play-store-512.png + play-feature-graphic.png")
 
 
 def gen_windows() -> None:

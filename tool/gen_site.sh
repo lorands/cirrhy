@@ -34,6 +34,12 @@ for shot in phone-timer phone-reports phone-projects; do
   cp "$root/docs/screenshots/$shot.png" "$out/assets/"
 done
 
+# A ready-made document, for anyone (App Review included) who wants to see the
+# app with a year of data in it rather than an empty timer. It is the example
+# document, not a copy of it, so it cannot fall behind the format.
+mkdir -p "$out/sample"
+cp "$root/docs/reporting/cirrhy.json" "$out/sample/cirrhy.json"
+
 # source markdown -> published directory
 pages=(privacy-policy:privacy support:support terms:terms)
 

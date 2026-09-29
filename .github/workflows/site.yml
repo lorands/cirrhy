@@ -10,6 +10,7 @@ on:
       - site/**
       - docs/legal/**
       - docs/screenshots/**
+      - docs/reporting/cirrhy.json
       - tool/gen_site.sh
       - .github/workflows/site.yml
   workflow_dispatch:

@@ -56,4 +56,14 @@ app/windows/flutter/generated_plugin*
 # Whose Apple ID signs a build is a property of the machine, not the project.
 # tool/ios-signing.sh writes it; Debug/Release.xcconfig include it optionally.
 app/ios/Flutter/Signing.xcconfig
+
+# The same rule on Android, where the file also carries the keystore passwords.
+# tool/android-signing.sh writes it; app/android/app/build.gradle.kts reads it.
+app/android/key.properties
+
+# A keystore belongs outside the repository — tool/android-signing.sh puts it
+# in ~/.cirrhy. This is the net under that, not the plan.
+*.jks
+*.keystore
+
 dist/

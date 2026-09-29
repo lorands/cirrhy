@@ -88,6 +88,13 @@ the ones that are expensive to revisit:
    ([privacy](../legal/privacy-policy.md), [support](../legal/support.md)),
    which is the default; the publisher may prefer them on their own domain, in
    which case those pages move and this repo keeps the canonical text.
+   The product site (`site/`, built by `tool/gen_site.sh`, deployed to GitHub
+   Pages by `.github/workflows/site.yml`) renders those same files — plus
+   `docs/legal/terms.md`, which states that Apple's Standard EULA applies — at
+   `https://lorands.github.io/cirrhy/{privacy,support,terms}/`. Pages must be
+   enabled once (Settings → Pages → Source: GitHub Actions) before the listing
+   URLs resolve. A custom domain later is a `CNAME` file in `site/`, and the
+   three listing URLs change with it.
 
 ### 4. Repo changes
 
@@ -147,6 +154,14 @@ reports.
 If the bundle ID is not in the dropdown, register it first at
 developer.apple.com → Certificates, Identifiers & Profiles → Identifiers →
 **+** → App IDs.
+
+Screenshots are generated rather than taken by hand, for the same reason the
+app icons are — `tool/gen_screenshots.sh` runs the real app on a 6.9" iPhone
+and a 13" iPad simulator against a seeded copy of the example document, taps
+between the tabs, and asserts each capture's pixel size before it lands in
+`app/build/screenshots/`. Rerun it per release rather than keeping a set
+around: the seed shifts the example document's timestamps so the newest entry
+ended two hours ago, and a stale set quietly shows a stale week.
 
 Then fill the listing from [`app-store-listing.md`](app-store-listing.md),
 which holds every field's copy ready to paste, including the App Review notes —

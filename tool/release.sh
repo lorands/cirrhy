@@ -25,11 +25,13 @@
 #    bumping second is exactly the mistake the verify job refuses, and
 #    exactly the one this script makes impossible.
 # 3. Prepares the app-store packages it honestly can into dist/: the Play
-#    Console .aab on any host with the Android SDK (debug-signed until a
-#    keystore exists, so buildable but not yet uploadable), and the App
-#    Store .ipa only on a macOS host with a signing team set — a free
-#    personal team cannot sign for distribution, so that one also needs a
-#    paid membership before it succeeds.
+#    Console .aab on any host with the Android SDK, and the App Store .ipa
+#    only on a macOS host with a signing team set — a free personal team
+#    cannot sign for distribution, so that one also needs a paid membership
+#    before it succeeds. The .aab is upload-signed once
+#    tool/android-signing.sh has configured a key and debug-signed before
+#    that, and the script says which, because the difference otherwise only
+#    surfaces as a Play Console rejection.
 #
 # --force moves an existing v<version> tag — the recovery for a tag that
 # failed verify — and force-pushes it; CI adopts the existing GitHub release
@@ -167,7 +169,10 @@ if "$REPO_ROOT/tool/target-android.sh" --release --aab; then
   cp "$APP_DIR/$AAB" "$DIST/cirrhy-$VERSION-playstore.aab"
   printf '%s  ✓ play aab%s  %s%s%s\n' \
     "$GREEN" "$OFF" "$DIM" "$DIST/cirrhy-$VERSION-playstore.aab" "$OFF"
-  warn "debug-signed until a keystore exists — the Play Console will refuse it as-is"
+  if ! android_upload_alias >/dev/null; then
+    warn "debug-signed — the Play Console will refuse it as-is;" \
+         "tool/android-signing.sh --create"
+  fi
 else
   warn "aab build failed — no Play package prepared"
 fi

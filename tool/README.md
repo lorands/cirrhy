@@ -126,11 +126,12 @@ assets rather than failing.
 
 After the push it prepares the app-store packages it honestly can, into
 `dist/` (gitignored): the Play Console `.aab` on any host with the Android
-SDK — debug-signed until a keystore exists, so buildable but not yet
-uploadable — and the App Store `.ipa` only on a macOS host with a signing
-team set (`tool/ios-signing.sh`), which further needs a paid membership,
-because a free personal team cannot sign for distribution. `--no-stores`
-skips this stage, `--yes` the push confirmation.
+SDK, upload-signed once `tool/android-signing.sh` has configured a key and
+debug-signed before that; and the App Store `.ipa` only on a macOS host with
+a signing team set (`tool/ios-signing.sh`), which further needs a paid
+membership, because a free personal team cannot sign for distribution. Each
+says which it produced rather than leaving you to find out at the store.
+`--no-stores` skips this stage, `--yes` the push confirmation.
 
 ## Desktop integration on Linux
 
@@ -180,6 +181,34 @@ When a personal team's seven days lapse the app stops launching; re-running
 that command reinstalls over the top, which keeps the chosen data folder
 because the bookmark lives in the app's preferences.
 
+## Signing for Android
+
+```sh
+tool/android-signing.sh                    # what is set, and its fingerprint
+tool/android-signing.sh --create           # mint an upload keystore
+tool/android-signing.sh ~/keys/cirrhy.jks  # point at an existing one
+tool/android-signing.sh --clear            # back to debug-signed releases
+```
+
+The counterpart of `tool/ios-signing.sh`, and the same argument: which key
+signs a build says nothing about the project, so the setting goes to
+`app/android/key.properties`, which is gitignored and which
+`app/android/app/build.gradle.kts` reads. No file, no signing config, and a
+`--release` build falls back to debug keys — installable, not publishable,
+and the build scripts say which you got.
+
+Unlike iOS, a release build works without this: Android debug-signs quietly,
+which is what the CI-built APK on the Releases page is. The key only matters
+for uploading to the Play Console.
+
+What it makes is the **upload key**, not the app signing key. Under Play App
+Signing, Google holds the key devices verify and it never leaves them; the
+upload key only proves an upload came from you, and a lost one is reset from
+the Console in a couple of days rather than being fatal. Back up the keystore
+and `key.properties` together anyway — the passwords live in the second file
+— and note the keystore defaults to `~/.cirrhy/`, outside the repo, where a
+`git clean` cannot reach it. `docs/release/play-store.md` is the full story.
+
 ## Icons
 
 ```sh
@@ -191,3 +220,40 @@ including the running-timer companions (the badged icons for the Linux and
 macOS swap, Windows' overlay dot, Android's notification glyph). See the
 script's header and the App icons section of `CLAUDE.md` — the geometry comes
 from Penpot and is not to be nudged by hand.
+
+## Store screenshots
+
+```sh
+tool/gen_screenshots.sh                 # every set this host can produce
+tool/gen_screenshots.sh --iphone        # only the App Store 6.9" set
+tool/gen_screenshots.sh --android       # both Play sets
+tool/gen_screenshots.sh --locale hu     # a localized set
+```
+
+Four sets, two stores: `iphone` and `ipad` for the App Store, `phone` and
+`tablet` for Play. The Apple two need a Mac; the Android two need only the
+SDK, so the Linux machine can produce them. Each runs the real app on a real
+device against a seeded copy of `docs/reporting/cirrhy.json` and taps between
+the tabs — `app/integration_test/screenshots_test.dart` does the driving and
+`tool/gen_screenshot_seed.py` builds the document. What lands in
+`app/build/screenshots/` is the shipping UI at device resolution.
+
+Every capture is checked before the script reports it, because both stores
+reject the wrong size and neither tells you quickly. Apple wants exact pixel
+dimensions, so those are asserted against a number. Google wants a range —
+320–3840px a side for phones, 1080–7680 for tablets — plus a rule that
+catches people out: **the long side may not exceed twice the short side**,
+which rules out every stock 1080×2400 phone AVD. `docs/release/play-store.md`
+has the two AVDs to make instead. A set where every capture is byte-identical
+is refused too: that is the surface never having painted, which produces
+blank frames at exactly the right size.
+
+The Android path has one extra moving part. A simulator shares the Mac's
+filesystem and can read the seed document straight off it; an emulator cannot
+see the host at all, so the script `adb push`es the seed into the app's own
+external files directory and the test finds it there.
+
+Generated rather than hand-captured for the same reason as the icons: a
+screenshot taken by hand is one nobody can reproduce next release. Rerun per
+release — the seed shifts the example document so the newest entry ended two
+hours ago, and a stale set shows a stale week.

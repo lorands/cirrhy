@@ -17,8 +17,10 @@
 # it is the one target every host-*.sh includes.
 #
 # Produces an APK by default; pass --aab for the App Bundle the Play Console
-# wants. A --release build here is signed with debug keys until a signing
-# config exists, so it installs but cannot be published.
+# wants. A --release build is signed with the upload key that
+# tool/android-signing.sh configured, and with debug keys when there is none —
+# installable either way, publishable only in the first case. Which one you
+# got is printed rather than assumed.
 
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
@@ -30,11 +32,25 @@ done
 parse_args ${ARGS[@]+"${ARGS[@]}"}
 require_flutter
 
-[[ -n "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" || -d "$HOME/Android/Sdk" ]] \
-  || warn "no Android SDK found; flutter will say where it looked"
+SDK="$(android_sdk)" || warn "no Android SDK found; flutter will say where it looked"
 
 if [[ "$MODE" == "release" ]]; then
-  warn "release build with no signing config — debug-signed, not publishable"
+  report_android_signing
+
+  # Flutter checks that a release *bundle* had its native libraries stripped,
+  # and it runs apkanalyzer from the SDK's cmdline-tools to do it. With those
+  # missing the check cannot run, so it reports "not stripped" and the build
+  # fails — after Gradle has already succeeded and written the .aab — with a
+  # message about debug symbols that never mentions cmdline-tools. Caught here
+  # because the difference is a one-line install against three lost minutes
+  # and a misdirected search.
+  if [[ "$FORMAT" == "appbundle" && -n "${SDK:-}" ]] \
+     && ! compgen -G "$SDK/cmdline-tools/*/bin/apkanalyzer" >/dev/null; then
+    warn "the SDK has no cmdline-tools, so this build will fail at the last step"
+    warn "claiming it could not strip debug symbols — install them in Android"
+    warn "Studio (SDK Manager → SDK Tools → Android SDK Command-line Tools),"
+    warn "or with sdkmanager \"cmdline-tools;latest\""
+  fi
 fi
 
 say "flutter build $FORMAT --$MODE"

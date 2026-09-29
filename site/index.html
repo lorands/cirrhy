@@ -1,0 +1,213 @@
+<!doctype html>
+<!-- Copyright 2026 Lóránd Somogyi — Licensed under the Apache License, Version 2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cirrhy</title>
+<meta name="description" content="A personal time tracker that keeps everything in one file you own. No account, no server, no network code. Free and open source.">
+<meta property="og:title" content="Cirrhy — time tracking in one file">
+<meta property="og:description" content="No account, no server, no network code. Your hours live in one file, in a folder you choose.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><span class="mark" aria-hidden="true"></span>Cirrhy</a>
+    <nav aria-label="Site">
+      <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#privacy">Privacy</a>
+      <a href="support/">Support</a>
+      <a href="https://github.com/lorands/cirrhy">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Circadian rhythm · a personal time tracker</p>
+        <h1>Your hours, in <em>one file</em> you&nbsp;own.</h1>
+        <p class="lede">Cirrhy tracks time against clients, projects and tasks, and keeps every record in a single readable document in a folder you choose. No account, no server, no network code — sync it with whatever you already trust.</p>
+        <div class="actions" id="download">
+          <!-- Swap for the App Store link once the listing is live. -->
+          <span class="btn primary" aria-disabled="true">App Store<small>iPhone, iPad &amp; Mac · coming soon</small></span>
+          <a class="btn" href="https://github.com/lorands/cirrhy/releases">Other downloads<small>Windows, Linux &amp; more</small></a>
+        </div>
+        <p class="meta">Free and open source · Apache 2.0 · English, magyar, español, italiano, Deutsch</p>
+      </div>
+
+      <figure class="file" aria-label="An excerpt of a Cirrhy document">
+        <div class="file-bar"><span class="pulse" aria-hidden="true"></span><b>cirrhy.json</b><span class="path">~/Dropbox/Time/</span></div>
+<pre><code><span class="c">{</span>
+  <span class="k">"format"</span>: <span class="s">"cirrhy"</span>, <span class="k">"formatVersion"</span>: <span class="s">2</span>,
+  <span class="k">"runningTimers"</span>: [{
+    <span class="k">"deviceId"</span>: <span class="s">"7c1e…a94f"</span>,
+    <span class="k">"startedAt"</span>: <span class="live" id="started">"2026-09-23T08:12:40.000Z"</span>,
+    <span class="k">"description"</span>: <span class="s">"API contract review"</span>
+  }],
+  <span class="k">"entries"</span>: [{
+    <span class="k">"start"</span>: <span class="s">"2026-09-22T13:02:11.000Z"</span>,
+    <span class="k">"stop"</span>:  <span class="s">"2026-09-22T15:40:05.000Z"</span>,
+    <span class="k">"description"</span>: <span class="s">"Onboarding flow, iOS"</span>,
+    <span class="k">"billable"</span>: <span class="s">true</span>
+  }, <span class="c">…</span>],
+  <span class="k">"tombstones"</span>: [<span class="c">…</span>]
+<span class="c">}</span></code></pre>
+        <div class="readout"><span class="t" id="clock">1:47:12</span><span>running on this device</span></div>
+      </figure>
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">The loop</p>
+        <h2>Start, stop, and pick up where you left off.</h2>
+        <p>The running timer sits above your recent work. Every past entry has a run button that starts a new timer from it — the tap you make twenty times a day.</p>
+      </div>
+      <div class="shots">
+        <figure>
+          <img src="assets/phone-timer.png" alt="The Timer screen: a running timer above a list of recent entries, each with a run button" width="1080" height="2400" loading="lazy">
+          <figcaption><b>Timer</b>One tap to restart any past entry.</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/phone-reports.png" alt="The Reports screen: totals per project over a chosen range" width="1080" height="2400" loading="lazy">
+          <figcaption><b>Reports</b>Any range, per-project totals, or the raw list.</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/phone-projects.png" alt="The Projects screen: clients with their projects and tasks" width="1080" height="2400" loading="lazy">
+          <figcaption><b>Projects</b>Clients, projects and tasks, with billable flags.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap sync">
+      <div>
+        <p class="eyebrow">Sync is your choice</p>
+        <div class="sec-head" style="margin-bottom:0;margin-top:12px">
+          <h2>Put the folder in iCloud Drive, Dropbox, Nextcloud or Syncthing. Cirrhy talks to none of them.</h2>
+        </div>
+        <ul>
+          <li><b>Read, merge, write.</b> Every save merges into what is on disk now, never blindly overwrites it.</li>
+          <li><b>Per record, not per file.</b> Two devices edited between syncs is the normal case, not a conflict dialog.</li>
+          <li><b>Losers are demoted, not destroyed.</b> The older side of a conflicting edit moves into that record's history.</li>
+          <li><b>Deletions stay deleted.</b> Tombstones stop a stale copy from resurrecting what you removed.</li>
+          <li><b>One timer per device.</b> Two timers left running are shown for you to reconcile, never silently swallowed.</li>
+        </ul>
+      </div>
+      <svg viewBox="0 0 480 400" role="img" aria-label="Three devices reading and writing the same cirrhy.json in a synced folder">
+        <ellipse class="cloud" cx="240" cy="200" rx="118" ry="84"/>
+        <text class="tiny" x="240" y="104" text-anchor="middle">your synced folder</text>
+        <path class="ln" d="M96 76 L196 172"/>
+        <path class="ln" d="M384 76 L284 172"/>
+        <path class="ln" d="M240 324 L240 240"/>
+        <rect class="doc" x="170" y="164" width="140" height="72" rx="10"/>
+        <text class="fname" x="240" y="198" text-anchor="middle">cirrhy.json</text>
+        <text class="tiny" x="240" y="218" text-anchor="middle">merged per record</text>
+        <rect class="dev" x="40" y="22" width="112" height="56" rx="10"/>
+        <text x="96" y="48" text-anchor="middle">iPhone</text>
+        <text class="tiny" x="96" y="65" text-anchor="middle">timer 1:47:12</text>
+        <rect class="dev" x="328" y="22" width="112" height="56" rx="10"/>
+        <text x="384" y="48" text-anchor="middle">Mac</text>
+        <text class="tiny" x="384" y="65" text-anchor="middle">idle</text>
+        <rect class="dev" x="184" y="324" width="112" height="56" rx="10"/>
+        <text x="240" y="350" text-anchor="middle">Linux laptop</text>
+        <text class="tiny" x="240" y="367" text-anchor="middle">offline · merges later</text>
+      </svg>
+    </div>
+  </section>
+
+  <section id="file">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">One file, and it is yours</p>
+        <h2>There is no export button, because there is nothing to export from.</h2>
+        <p>The document is plain JSON with a published schema. Open it, back it up, script it, or hand it to an AI agent for the report the app does not have.</p>
+      </div>
+      <div class="rules">
+        <div class="rule"><h3>Readable</h3><p>One <code>cirrhy.json</code> per folder. UUIDs, UTC timestamps, nothing encoded or encrypted.</p></div>
+        <div class="rule"><h3>Documented</h3><p>A JSON Schema and an agent-facing format guide ship in the source, so imports and reports go through the file.</p></div>
+        <div class="rule"><h3>Recoverable</h3><p>Backups before any write that cannot be atomic, plus <b>Back up now</b> whenever you want one.</p></div>
+        <div class="rule"><h3>Auditable</h3><p>Apache 2.0. Every line that touches your data is public on GitHub.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Privacy</p>
+        <h2>Collects nothing, because it has no way to send anything.</h2>
+      </div>
+      <div class="ledger">
+        <div class="ledger-head">
+          <h3>Data Not Collected</h3>
+          <p>The same answer Cirrhy gives on its App Store privacy label, for every category.</p>
+        </div>
+        <table>
+          <tr><td><span class="no">No</span>Network requests</td><td>The app contains no networking code at all.</td></tr>
+          <tr><td><span class="no">No</span>Accounts or sign-in</td><td>There is no identity of any kind to create.</td></tr>
+          <tr><td><span class="no">No</span>Analytics or crash reporting</td><td>Nothing measures how you use it.</td></tr>
+          <tr><td><span class="no">No</span>Tracking or advertising</td><td>No third-party SDK that collects anything.</td></tr>
+        </table>
+        <div class="ledger-foot">The only identifier is a random UUID minted on first run, stored in your own file so two devices' timers do not collide. <a href="privacy/">Read the privacy policy</a>.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="platforms">
+    <div class="wrap">
+      <div class="sec-head" style="margin-bottom:20px">
+        <p class="eyebrow">Everywhere you work</p>
+        <h2>One document, every device.</h2>
+        <p>The same file opens on each of them. Windows is built but not yet tested by anyone — reports welcome.</p>
+      </div>
+      <div class="platforms">
+        <span class="here">iPhone</span><span class="here">iPad</span><span class="here">Mac</span><span>Windows</span><span>Linux</span><span>Android</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p>© 2026 Lóránd Somogyi · Apache License 2.0</p>
+      <p>Published on the App Store by Appific Kft.</p>
+    </div>
+    <nav aria-label="Legal">
+      <a href="privacy/">Privacy Policy</a>
+      <a href="support/">Support</a>
+      <a href="terms/">Terms of Use</a>
+      <a href="https://github.com/lorands/cirrhy">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // The hero timer: started 1:47:12 before the page loaded, ticking like the app's.
+  (function () {
+    var start = Date.now() - (1 * 3600 + 47 * 60 + 12) * 1000;
+    var clock = document.getElementById('clock');
+    var started = document.getElementById('started');
+    started.textContent = '"' + new Date(start - start % 1000).toISOString() + '"';
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function tick() {
+      var s = Math.floor((Date.now() - start) / 1000);
+      clock.textContent = Math.floor(s / 3600) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60);
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+</script>
+</body>
+</html>

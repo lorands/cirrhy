@@ -7,6 +7,7 @@
 
 It's FREE and Open-Source. You OWN it.
 
+[![App Store](https://img.shields.io/badge/App_Store-Cirrhy-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/app/id6802780565)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44-02569B.svg?logo=flutter)](https://flutter.dev)
 
@@ -83,9 +84,17 @@ untested. Tagged versions are built, tested and packaged by CI onto the
 [Releases page](https://github.com/lorands/cirrhy/releases) — a Linux
 bundle, a debug-signed Android APK, an unsigned macOS app and a
 CI-compiled-but-untested Windows build, each labelled as exactly that.
-There are no store listings yet, and iOS has no prebuilt artifact (it needs
-your own signing — see below), so for those two, building from source is the
-way in.
+
+**iPhone and iPad are on the App Store**, where the listing is published by
+[Appific Kft.](https://appific.app) under an arrangement with the author — the app itself is the same
+Apache-2.0 code in this repository, and stays free:
+
+[**Cirrhy on the App Store**](https://apps.apple.com/app/id6802780565)
+
+There is no Play listing yet, so Android means the APK above or a source
+build. iOS has no prebuilt artifact here either, because an installable one
+needs a signing identity CI should not hold — build it yourself with your own
+team, as below.
 
 ## Building from source
 
@@ -267,6 +276,16 @@ Bugs and questions go to [Issues](https://github.com/lorands/cirrhy/issues).
 actionable, what is deliberate rather than broken, and how to recover data
 *without* copying a backup over `cirrhy.json` — the one recovery move that
 looks right and is wrong.
+
+## Thanks
+
+**[Appific](https://appific.app)** publish Cirrhy on the App Store under their
+Apple Developer Program account. A one-person open-source project has no
+straightforward route onto iOS: distribution takes a paid membership and a
+legal entity willing to stand behind the listing. Appific offered theirs and
+asked nothing of the project for it — no branding, no strings, no change to
+how it is built or licensed. The app remains Apache 2.0, remains free, and
+remains this repository.
 
 ## License
 

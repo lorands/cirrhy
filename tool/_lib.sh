@@ -91,6 +91,49 @@ require_flutter() {
   command -v flutter >/dev/null 2>&1 || die "flutter not on PATH"
 }
 
+# --- android sdk ------------------------------------------------------------
+
+# Where the SDK is, across the two standard locations and the environment.
+# macOS and Linux disagree about the path, and neither puts its tools on PATH.
+android_sdk() {
+  local candidate
+  for candidate in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" \
+      "$HOME/Library/Android/sdk" "$HOME/Android/Sdk"; do
+    [[ -n "$candidate" && -d "$candidate" ]] && { printf '%s\n' "$candidate"; return 0; }
+  done
+  return 1
+}
+
+# --- android signing --------------------------------------------------------
+#
+# One answer to "how would a release build be signed?", shared by
+# target-android.sh and release.sh so the two cannot disagree. Prints the key
+# alias when an upload key is configured, or nothing when it is not.
+# tool/android-signing.sh is what writes the file.
+android_upload_alias() {
+  local props="$APP_DIR/android/key.properties" line
+  [[ -f "$props" ]] || return 1
+  while IFS= read -r line; do
+    [[ "$line" == keyAlias=* ]] || continue
+    printf '%s\n' "${line#*=}"
+    return 0
+  done <"$props"
+  return 1
+}
+
+# Says how a --release build will be signed, and — the part that matters —
+# whether the Play Console will accept the result.
+report_android_signing() {
+  local alias
+  if alias="$(android_upload_alias)"; then
+    printf '%s  ✓ upload-signed%s  %skey "%s" from android/key.properties%s\n' \
+      "$GREEN" "$OFF" "$DIM" "$alias" "$OFF"
+  else
+    warn "no upload key — debug-signed, so installable but not publishable"
+    warn "tool/android-signing.sh --create sets one up"
+  fi
+}
+
 # Resolves a glob to the one path that exists. The Linux bundle sits under an
 # architecture directory (x64, arm64) that depends on the machine, so the
 # scripts cannot hard-code it.
